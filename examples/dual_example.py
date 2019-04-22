@@ -1,12 +1,13 @@
 import diffcp
+
 import numpy as np
 import utils
 np.set_printoptions(precision=5, suppress=True)
 
 
 # We generate a random cone program with a cone
-# defined as a product of a 3 fixed cones, 3 positive orthant cones,
-# and 5 second order cones.
+# defined as a product of a 3-d fixed cone, 3-d positive orthant cone,
+# and a 5-d second order cone.
 K = {
     'f': 3,
     'l': 3,
@@ -33,7 +34,7 @@ dA, db, dc = adjoint_derivative(c, np.zeros(
     m), np.zeros(m), atol=1e-10, btol=1e-10)
 
 # The gradient of the objective with respect to b should be
-# equal to the dual variable y (see, e.g., page 268 of Convex Optimization by
+# equal to minus the dual variable y (see, e.g., page 268 of Convex Optimization by
 # Boyd & Vandenberghe).
 print("db =", db)
 print("-y =", -y)
