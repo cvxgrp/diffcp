@@ -141,7 +141,11 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
             [-np.expand_dims(dc, -1).T, -np.expand_dims(db, -1).T, None]
         ])
         # can ignore w since w = 1
-        dz = splinalg.lsqr(M, dQ @ pi_z, **kwargs)[0]
+        rhs = dQ @ pi_z
+        if np.allclose(rhs, 0):
+            dz = np.zeros(rhs.size)
+        else:
+            dz = splinalg.lsqr(M, rhs, **kwargs)[0]
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
         dy = D_proj_dual_cone@dv - y * dw
@@ -163,8 +167,11 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         dw = -(x @ dx + y @ dy + s @ ds)
         dz = np.concatenate(
             [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
-        r = splinalg.lsqr(
-            cone_lib.transpose_linear_operator(M), dz, **kwargs)[0]
+        if np.allclose(dz, 0):
+            r = np.zeros(dz.shape)
+        else:
+            r = splinalg.lsqr(
+                cone_lib.transpose_linear_operator(M), dz, **kwargs)[0]
 
         # dQ is the outer product of pi_z and r. Instead of materializing this,
         # the code below only computes the entries needed to compute dA, db, dc
