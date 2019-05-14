@@ -209,6 +209,7 @@ def _dproj(x, cone, dual=False):
         offset = 0
         for _ in range(num_cones):
             x_i = x[offset:offset + 3]
+            offset += 3
             if in_exp(x_i):
                 ops.append(splinalg.aslinearoperator(sparse.eye(3)))
             elif in_exp_dual(-x_i):
@@ -273,6 +274,8 @@ def pi(x, cones, dual=False):
         for dim in sz:
             if cone == PSD:
                 dim = vec_psd_dim(dim)
+            elif cone == EXP:
+                dim *= 3
             projection[offset:offset + dim] = _proj(
                 x[offset:offset + dim], cone, dual=dual)
             offset += dim
@@ -300,6 +303,8 @@ def dpi(x, cones, dual=False):
         for dim in sz:
             if cone == PSD:
                 dim = vec_psd_dim(dim)
+            elif cone == EXP:
+                dim *= 3
             dprojections.append(
                 _dproj(x[offset:offset + dim], cone, dual=dual))
             offset += dim
