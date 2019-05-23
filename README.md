@@ -2,7 +2,7 @@
 
 `diffcp` is a Python package for computing the derivative of a convex cone program, with respect to its problem data. The derivative is implemented as an abstract linear map, with methods for its forward application and its adjoint. 
 
-The implementation is based on the calculations in our paper [Differentiating through a cone program](http://web.stanford.edu/~boyd/papers/diff_cone_prog.html).
+The implementation is based on the calculations in our paper [Differentiating through a conic program](http://web.stanford.edu/~boyd/papers/diff_cone_prog.html).
 
 ### Installation
 `diffcp` is available on Pip.
@@ -124,14 +124,14 @@ If you wish to cite `diffcp`, please use the following BibTex:
 ```
 @article{diffcp2019,
     author       = {Agrawal, A. and Barratt, S. and Boyd, S. and Busseti, E. and Moursi, W.},
-    title        = {Differentiation through a Cone Program},
+    title        = {Differentiation through a Conic Program},
     journal      = {arXiv preprint arXiv:1904.09043},
     year         = {2019},
 }
 
 @misc{diffcp,
     author       = {Agrawal, A. and Barratt, S. and Boyd, S. and Busseti, E. and Moursi, W.},
-    title        = {{diffcp}: differentiation of a cone program, version 1.0},
+    title        = {{diffcp}: differentiation of a conic program, version 1.0},
     howpublished = {\url{https://github.com/cvxgrp/diffcp}},
     year         = 2019
 }
