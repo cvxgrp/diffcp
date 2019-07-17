@@ -3,6 +3,7 @@ import cvxpy as cp
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg as splinalg
+import time
 
 import diffcp.cone_program as cone_prog
 import diffcp.cones as cone_lib
@@ -279,6 +280,35 @@ class TestConeProgDiff(unittest.TestCase):
         np.testing.assert_allclose(y, y_p, atol=1e-7)
         np.testing.assert_allclose(s, s_p, atol=1e-7)
 
+    def test_threading(self):
+        m = 100
+        n = 100
+        As, bs, cs, cone_dicts = [], [], [], []
+        results = []
+
+        serial_time = 0.0
+        for _ in range(10):
+            A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
+            As += [A]
+            bs += [b]
+            cs += [c]
+            cone_dicts += [cone_dims]
+            tic = time.time()
+            results.append(cone_prog.solve_and_derivative(A, b, c, cone_dims))
+            toc = time.time()
+            serial_time += toc - tic
+
+        tic = time.time()
+        results_thread = cone_prog.solve_and_derivative_batch(As, bs, cs, cone_dicts)
+        toc = time.time()
+        parallel_time = toc - tic
+
+        self.assertTrue(parallel_time < serial_time)
+
+        for i in range(200):
+            np.testing.assert_allclose(results[i][0], results_thread[i][0])
+            np.testing.assert_allclose(results[i][1], results_thread[i][1])
+            np.testing.assert_allclose(results[i][2], results_thread[i][2])
 
 if __name__ == '__main__':
     np.random.seed(0)
