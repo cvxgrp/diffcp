@@ -5,6 +5,8 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import scs
 
+from joblib import Parallel, delayed
+
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -27,6 +29,11 @@ def dpi(z, cones):
         cone_lib.dpi(v, cones, dual=True),
         sparse.diags(.5 * (np.sign(w) + 1))
     ])
+
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=None, **kwargs):
+    batch_size = len(As)
+    return Parallel(n_jobs=n_jobs)(
+        delayed(solve_and_derivative)(As[i], bs[i], cs[i], cone_dicts[i], warm_start=None if warm_starts is None else warm_starts[i], **kwargs) for i in (range(batch_size)))
 
 
 def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
