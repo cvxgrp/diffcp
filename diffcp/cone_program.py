@@ -30,9 +30,9 @@ def dpi(z, cones):
         sparse.diags(.5 * (np.sign(w) + 1))
     ])
 
-def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=None, **kwargs):
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=4, warm_starts=None, **kwargs):
     batch_size = len(As)
-    return Parallel(n_jobs=n_jobs)(
+    return Parallel(n_jobs=n_jobs, backend="threading")(
         delayed(solve_and_derivative)(As[i], bs[i], cs[i], cone_dicts[i], warm_start=None if warm_starts is None else warm_starts[i], **kwargs) for i in (range(batch_size)))
 
 
