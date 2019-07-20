@@ -281,13 +281,13 @@ class TestConeProgDiff(unittest.TestCase):
         np.testing.assert_allclose(s, s_p, atol=1e-7)
 
     def test_threading(self):
-        m = 200
-        n = 100
+        m = 20
+        n = 10
         As, bs, cs, cone_dicts = [], [], [], []
         results = []
 
         serial_time = 0.0
-        for _ in range(20):
+        for _ in range(50):
             A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
             As += [A]
             bs += [b]
@@ -299,14 +299,15 @@ class TestConeProgDiff(unittest.TestCase):
             serial_time += toc - tic
 
         tic = time.time()
-        results_thread = cone_prog.solve_and_derivative_batch(As, bs, cs, cone_dicts)
+        results_thread = cone_prog.solve_and_derivative_batch(
+            As, bs, cs, cone_dicts)
         toc = time.time()
         parallel_time = toc - tic
 
         print(parallel_time, serial_time)
         self.assertTrue(parallel_time < serial_time)
 
-        for i in range(20):
+        for i in range(50):
             np.testing.assert_allclose(results[i][0], results_thread[i][0])
             np.testing.assert_allclose(results[i][1], results_thread[i][1])
             np.testing.assert_allclose(results[i][2], results_thread[i][2])

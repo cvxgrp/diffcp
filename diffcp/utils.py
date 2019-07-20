@@ -3,7 +3,6 @@ import numpy as np
 from scipy import sparse
 
 
-
 def scs_data_from_cvxpy_problem(problem):
     import cvxpy as cp
     data = problem.get_problem_data(cp.SCS)[0]

@@ -5,7 +5,8 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import scs
 
-from joblib import Parallel, delayed
+import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
 
 
 def pi(z, cones):
@@ -30,10 +31,21 @@ def dpi(z, cones):
         sparse.diags(.5 * (np.sign(w) + 1))
     ])
 
-def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=4, warm_starts=None, **kwargs):
+
+def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, kwargs):
+    return solve_and_derivative(A, b, c, cone_dict, warm_start=warm_start, **kwargs)
+
+
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=None, **kwargs):
+    if n_jobs == -1:
+        n_jobs = mp.cpu_count()
     batch_size = len(As)
-    return Parallel(n_jobs=n_jobs, backend="threading")(
-        delayed(solve_and_derivative)(As[i], bs[i], cs[i], cone_dicts[i], warm_start=None if warm_starts is None else warm_starts[i], **kwargs) for i in (range(batch_size)))
+    pool = ThreadPool(processes=n_jobs)
+    args = []
+    for i in range(batch_size):
+        args += [(As[i], bs[i], cs[i], cone_dicts[i],
+                  None if warm_starts is None else warm_starts[i], kwargs)]
+    return pool.starmap(solve_and_derivative_wrapper, args)
 
 
 def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
