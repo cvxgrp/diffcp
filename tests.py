@@ -304,7 +304,6 @@ class TestConeProgDiff(unittest.TestCase):
         toc = time.time()
         parallel_time = toc - tic
 
-        print(parallel_time, serial_time)
         self.assertTrue(parallel_time < serial_time)
 
         for i in range(50):
