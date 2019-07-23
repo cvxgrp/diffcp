@@ -68,6 +68,7 @@ def in_exp(x):
 
 
 def in_exp_dual(x):
+    # TODO(sbarratt): need to make the numerics safe here, maybe using logs
     return (np.isclose(x[0], 0) and x[1] >= 0 and x[2] >= 0) or (
         x[0] < 0 and -x[0] * np.exp(x[1] / x[0]) <= np.e * x[2])
 

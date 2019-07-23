@@ -5,6 +5,9 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import scs
 
+import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
+
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -27,6 +30,22 @@ def dpi(z, cones):
         cone_lib.dpi(v, cones, dual=True),
         sparse.diags(.5 * (np.sign(w) + 1))
     ])
+
+
+def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, kwargs):
+    return solve_and_derivative(A, b, c, cone_dict, warm_start=warm_start, **kwargs)
+
+
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=None, **kwargs):
+    if n_jobs == -1:
+        n_jobs = mp.cpu_count()
+    batch_size = len(As)
+    pool = ThreadPool(processes=n_jobs)
+    args = []
+    for i in range(batch_size):
+        args += [(As[i], bs[i], cs[i], cone_dicts[i],
+                  None if warm_starts is None else warm_starts[i], kwargs)]
+    return pool.starmap(solve_and_derivative_wrapper, args)
 
 
 def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):

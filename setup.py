@@ -19,7 +19,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "numpy >= 1.15",
-        "scs >= 2.0.0",
+        "scs >= 2.1.1",  # no more AA iteration prints
         "scipy >= 1.1.0"],
     ext_modules=[_proj],
     license="Apache License, Version 2.0",
