@@ -11,7 +11,7 @@ _proj = Extension("_proj",
 
 setup(
     name="diffcp",
-    version="1.0.2",
+    version="1.0.4",
     author="Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, Walaa Moursi",
     description="Differentiating through cone programs",
     long_description=long_description,
