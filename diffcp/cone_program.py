@@ -184,19 +184,20 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
             dz = np.linalg.lstsq(M.todense(), rhs, rcond=None)[0]
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
-            it_ref_iters = kwargs.get("it_ref_iters", 5)
+            it_ref_iters = kwargs.get("it_ref_iters", 10)
             M_iref = sparse.bmat([
                 [-sparse.eye(N), M],
                 [MT, rho * sparse.eye(N)]
             ])
             solve = splinalg.factorized(M_iref.tocsc())
-            rhs = np.append(np.zeros(N), MT @ rhs)
-            dz = np.zeros(2 * N)
+            rhs = MT @ rhs
+            dz = np.zeros(N)
             # iterative refinement
             for _ in range(it_ref_iters):
-                residual = rhs - M_iref @ dz
-                dz = dz + solve(residual)
-            dz = dz[N:]
+                residual = rhs - MT @ (M @ dz)
+                if np.linalg.norm(residual) <= 1e-10:
+                    break
+                dz = dz + solve(np.append(np.zeros(N), residual))[N:]
         elif mode == "lsqr":
             dz = splinalg.lsqr(M, rhs, **kwargs)[0]
         du, dv, dw = np.split(dz, [n, n + m])
@@ -235,13 +236,14 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
                 [M, rho * sparse.eye(N)]
             ])
             solve = splinalg.factorized(MT_iref.tocsc())
-            rhs = np.append(np.zeros(N), M @ dz)
-            r = np.zeros(2 * N)
+            rhs = M @ dz
+            r = np.zeros(N)
             # iterative refinement
             for k in range(it_ref_iters):
-                residual = rhs - MT_iref @ r
-                r = r + solve(residual)
-            r = r[N:]
+                residual = rhs - M @ (MT @ r)
+                if np.linalg.norm(residual) <= 1e-10:
+                    break
+                r = r + solve(np.append(np.zeros(N), residual))[N:]
         elif mode == "lsqr":
             r = splinalg.lsqr(MT, dz, **kwargs)[0]
         else:
