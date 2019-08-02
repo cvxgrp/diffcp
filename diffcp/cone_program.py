@@ -183,8 +183,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
         elif mode == "dense":
             dz = np.linalg.lstsq(M.todense(), rhs, rcond=None)[0]
         elif mode == "sparse":
-            rho = kwargs.get("rho", 1e-4)
-            it_ref_iters = kwargs.get("it_ref_iters", 10)
+            rho = kwargs.get("rho", 1e-6)
+            it_ref_iters = kwargs.get("it_ref_iters", 50)
             M_iref = sparse.bmat([
                 [-sparse.eye(N), M],
                 [MT, rho * sparse.eye(N)]
@@ -215,7 +215,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
             perturbations; the sparsity pattern of `dA` matches that of `A`.
         """
         dw = -(x @ dx + y @ dy + s @ ds)
-        if mode == "dense":
+        if mode == "dense" or mode == "sparse":
             dz = np.concatenate(
                 [dx, D_proj_dual_cone.T @ (dy + ds) - ds, np.array([dw])])
         else:
@@ -227,26 +227,26 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
         elif mode == "dense":
             r = np.linalg.lstsq(MT.todense(), dz, rcond=None)[0]
         elif mode == "sparse":
-            rho = kwargs.get("rho", 1e-4)
-            it_ref_iters = kwargs.get("it_ref_iters", 10)
+            rho = kwargs.get("rho", 1e-6)
+            it_ref_iters = kwargs.get("it_ref_iters", 50)
             MT_iref = sparse.bmat([
                 [-sparse.eye(N), MT],
                 [M, rho * sparse.eye(N)]
             ])
             solve = splinalg.factorized(MT_iref.tocsc())
-            rhs = np.append(np.zeros(N), M @ rhs)
+            rhs = np.append(np.zeros(N), M @ dz)
             r = np.zeros(2 * N)
             # iterative refinement
             for _ in range(it_ref_iters):
                 r = r + solve(rhs - MT_iref @ r)
-            dz = dz[N:]
+            r = r[N:]
         elif mode == "lsqr":
             r = splinalg.lsqr(MT, dz, **kwargs)[0]
         else:
             return NotImplemented
 
         values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
-        dA = sparse.csc_matrix((values, (rows, cols)), shape=A_shape)
+        dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
         db = pi_z[n:n + m] * r[-1] - pi_z[-1] * r[n:n + m]
         dc = pi_z[:n] * r[-1] - pi_z[-1] * r[:n]
 

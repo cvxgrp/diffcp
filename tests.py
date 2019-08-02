@@ -251,23 +251,38 @@ class TestConeProgDiff(unittest.TestCase):
         m = 20
         n = 10
 
+        A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
         for mode in ["lsqr", "dense", "sparse"]:
-            A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
 
-            x, y, s, derivative, _ = cone_prog.solve_and_derivative(
-                A, b, c, cone_dims, eps=1e-8, mode=mode)
+            x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
+                A, b, c, cone_dims, eps=1e-10, mode=mode)
 
             dA = utils.get_random_like(
                 A, lambda n: np.random.normal(0, 1e-6, size=n))
             db = np.random.normal(0, 1e-6, size=b.size)
             dc = np.random.normal(0, 1e-6, size=c.size)
 
-            dx, dy, ds = derivative(dA, db, dc)
+            dx, dy, ds = derivative(dA, db, dc, atol=1e-10)
 
             x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
-                A + dA, b + db, c + dc, cone_dims, eps=1e-8)
+                A + dA, b + db, c + dc, cone_dims, eps=1e-10)
 
-        np.testing.assert_allclose(x_pert - x, dx, atol=1e-6, rtol=1e-6)
+            np.testing.assert_allclose(x_pert - x, dx, atol=1e-6)
+            np.testing.assert_allclose(y_pert - y, dy, atol=1e-6)
+            np.testing.assert_allclose(s_pert - s, ds, atol=1e-6)
+
+            x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
+                A, b, c, cone_dims, eps=1e-10, mode=mode)
+
+            objective = c.T @ x
+            dA, db, dc = adjoint_derivative(
+                c, np.zeros(y.size), np.zeros(s.size))
+
+            x_pert, _, _, _, _ = cone_prog.solve_and_derivative(
+                A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10)
+            objective_pert = c.T @ x_pert
+
+            np.testing.assert_allclose(objective_pert - objective, 1e-6 * dA.multiply(dA).sum() + 1e-6 * db@db + 1e-6 * dc@dc, atol=1e-8)
 
     def test_warm_start(self):
         m = 20
