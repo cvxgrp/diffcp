@@ -250,20 +250,22 @@ class TestConeProgDiff(unittest.TestCase):
     def test_solve_and_derivative(self):
         m = 20
         n = 10
-        A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
 
-        x, y, s, derivative, _ = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, eps=1e-8)
+        for mode in ["lsqr", "dense", "sparse"]:
+            A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
 
-        dA = utils.get_random_like(
-            A, lambda n: np.random.normal(0, 1e-6, size=n))
-        db = np.random.normal(0, 1e-6, size=b.size)
-        dc = np.random.normal(0, 1e-6, size=c.size)
+            x, y, s, derivative, _ = cone_prog.solve_and_derivative(
+                A, b, c, cone_dims, eps=1e-8, mode=mode)
 
-        dx, dy, ds = derivative(dA, db, dc)
+            dA = utils.get_random_like(
+                A, lambda n: np.random.normal(0, 1e-6, size=n))
+            db = np.random.normal(0, 1e-6, size=b.size)
+            dc = np.random.normal(0, 1e-6, size=c.size)
 
-        x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
-            A + dA, b + db, c + dc, cone_dims, eps=1e-8)
+            dx, dy, ds = derivative(dA, db, dc)
+
+            x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
+                A + dA, b + db, c + dc, cone_dims, eps=1e-8)
 
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-6, rtol=1e-6)
 

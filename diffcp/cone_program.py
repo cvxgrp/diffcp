@@ -32,6 +32,18 @@ def dpi(z, cones):
     ])
 
 
+def dpi_explicit(z, cones):
+    """Derivative of projection onto R^n x K^* x R_+
+     `cones` represents a conex cone K, and K^* is its dual cone.
+    """
+    u, v, w = z
+    return sparse.block_diag([
+        sparse.eye(np.prod(u.shape)),
+        cone_lib.dpi_explicit(v, cones, dual=True),
+        sparse.diags(.5 * (np.sign(w) + 1))
+    ])
+
+
 def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, kwargs):
     return solve_and_derivative(A, b, c, cone_dict, warm_start=warm_start, **kwargs)
 
@@ -48,29 +60,22 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=No
     return pool.starmap(solve_and_derivative_wrapper, args)
 
 
-def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
+def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwargs):
     """Solves a cone program, returns its derivative as an abstract linear map.
-
     This function solves a convex cone program, with primal-dual problems
-
         min.        c^T x                  min.        b^Ty
         subject to  Ax + s = b             subject to  A^Ty + c = 0
                     s \in K                            y \in K^*
-
     The problem data A, b, and c correspond to the arguments `A`, `b`, and `c`,
     and the convex cone `K` corresponds to `cone_dict`; x and s are the primal
     variables, and y is the dual variable.
-
     This function returns a solution (x, y, s) to the program. It also returns
     two functions that respectively represent application of the derivative
     (at A, b, and c) and its adjoint.
-
     The problem data must be formatted according to the SCS convention, see
     https://github.com/cvxgrp/scs.
-
     For background on derivatives of cone programs, see
     http://web.stanford.edu/~boyd/papers/diff_cone_prog.html.
-
     Args:
       A: A sparse SciPy matrix in CSC format; the first block of rows must
         correspondond to the zero cone, the next block to the positive orthant,
@@ -88,8 +93,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
           matrix variable; a value of k for diffcp.EXP corresponds to k / 3
           exponential cones. See SCS documentation for more details.
       warm_start: (optional) A tuple (x, y, s) at which to warm-start SCS.
-      kwargs: (optional) Keyword arguments to forward to SCS.
-
+      mode: (optional) Which mode to compute derivative with, options are ["dense", "sparse", "lsqr"].
+      kwargs: (optional) Keyword arguments to send to SCS.
     Returns:
         x: Optimal value of the primal variable x.
         y: Optimal value of the dual variable y.
@@ -105,8 +110,10 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
             that applies the adjoint of the derivative of the cone program at
             (A, b, and c) to the perturbations `dx`, `dy`, `ds`, which must be
             NumPy arrays. The output `dA` matches the sparsity pattern of `A`.
-
     """
+    if mode not in ["dense", "sparse", "lsqr"]:
+        return NotImplementedError
+
     data = {
         "A": A,
         "b": b,
@@ -130,26 +137,37 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
     cones = cone_lib.parse_cone_dict(cone_dict)
     z = (x, y - s, np.array([1]))
     u, v, w = z
-    D_proj_dual_cone = cone_lib.dpi(v, cones, dual=True)
+
     Q = sparse.bmat([
         [None, A.T, np.expand_dims(c, - 1)],
         [-A, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
-    M = splinalg.aslinearoperator(Q - sparse.eye(N)) @ dpi(
-        z, cones) + splinalg.aslinearoperator(sparse.eye(N))
+
+    if mode == "dense" or mode == "sparse":
+        D_proj_dual_cone = cone_lib.dpi_explicit(v, cones, dual=True)
+        try:
+            M = (Q - sparse.eye(N)) @ dpi_explicit(z, cones) + sparse.eye(N)
+            MT = M.T
+        except NotImplementedError:
+            print("PSD cone not supported; switching to mode=lsqr.")
+            mode = "lsqr"
+    if mode == "lsqr":
+        D_proj_dual_cone = cone_lib.dpi(v, cones, dual=True)
+        M = splinalg.aslinearoperator(Q - sparse.eye(N)) @ dpi(
+            z, cones) + splinalg.aslinearoperator(sparse.eye(N))
+        MT = cone_lib.transpose_linear_operator(M)
+
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
-
         Args:
             dA: SciPy sparse matrix in CSC format; must have same sparsity
                 pattern as the matrix `A` from the cone program
             db: NumPy array representing perturbation in `b`
             dc: NumPy array representing perturbation in `c`
-
         Returns:
            NumPy arrays dx, dy, ds, the result of applying the derivative
            to the perturbations.
@@ -159,11 +177,26 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
             [-dA, None, np.expand_dims(db, -1)],
             [-np.expand_dims(dc, -1).T, -np.expand_dims(db, -1).T, None]
         ])
-        # can ignore w since w = 1
         rhs = dQ @ pi_z
         if np.allclose(rhs, 0):
             dz = np.zeros(rhs.size)
-        else:
+        elif mode == "dense":
+            dz = np.linalg.lstsq(M.todense(), rhs, rcond=None)[0]
+        elif mode == "sparse":
+            rho = kwargs.get("rho", 1e-4)
+            it_ref_iters = kwargs.get("it_ref_iters", 10)
+            M_iref = sparse.bmat([
+                [-sparse.eye(N), M],
+                [MT, rho * sparse.eye(N)]
+            ])
+            solve = splinalg.factorized(M_iref.tocsc())
+            rhs = np.append(np.zeros(N), MT @ rhs)
+            dz = np.zeros(2 * N)
+            # iterative refinement
+            for _ in range(it_ref_iters):
+                dz = dz + solve(rhs - M_iref @ dz)
+            dz = dz[N:]
+        elif mode == "lsqr":
             dz = splinalg.lsqr(M, rhs, **kwargs)[0]
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
@@ -173,31 +206,50 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
 
     def adjoint_derivative(dx, dy, ds, **kwargs):
         """Applies adjoint of derivative at (A, b, c) to perturbations dx, dy, ds
-
         Args:
             dx: NumPy array representing perturbation in `x`
             dy: NumPy array representing perturbation in `y`
             ds: NumPy array representing perturbation in `s`
-
         Returns:
             (`dA`, `db`, `dc`), the result of applying the adjoint to the
             perturbations; the sparsity pattern of `dA` matches that of `A`.
         """
         dw = -(x @ dx + y @ dy + s @ ds)
-        dz = np.concatenate(
-            [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
+        if mode == "dense":
+            dz = np.concatenate(
+                [dx, D_proj_dual_cone.T @ (dy + ds) - ds, np.array([dw])])
+        else:
+            dz = np.concatenate(
+                [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
+
         if np.allclose(dz, 0):
             r = np.zeros(dz.shape)
+        elif mode == "dense":
+            r = np.linalg.lstsq(MT.todense(), dz, rcond=None)[0]
+        elif mode == "sparse":
+            rho = kwargs.get("rho", 1e-4)
+            it_ref_iters = kwargs.get("it_ref_iters", 10)
+            MT_iref = sparse.bmat([
+                [-sparse.eye(N), MT],
+                [M, rho * sparse.eye(N)]
+            ])
+            solve = splinalg.factorized(MT_iref.tocsc())
+            rhs = np.append(np.zeros(N), M @ rhs)
+            r = np.zeros(2 * N)
+            # iterative refinement
+            for _ in range(it_ref_iters):
+                r = r + solve(rhs - MT_iref @ r)
+            dz = dz[N:]
+        elif mode == "lsqr":
+            r = splinalg.lsqr(MT, dz, **kwargs)[0]
         else:
-            r = splinalg.lsqr(
-                cone_lib.transpose_linear_operator(M), dz, **kwargs)[0]
+            return NotImplemented
 
-        # dQ is the outer product of pi_z and r. Instead of materializing this,
-        # the code below only computes the entries needed to compute dA, db, dc
         values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
-        dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
+        dA = sparse.csc_matrix((values, (rows, cols)), shape=A_shape)
         db = pi_z[n:n + m] * r[-1] - pi_z[-1] * r[n:n + m]
         dc = pi_z[:n] * r[-1] - pi_z[-1] * r[:n]
+
         return dA, db, dc
 
     return x, y, s, derivative, adjoint_derivative

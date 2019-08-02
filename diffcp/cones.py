@@ -68,7 +68,6 @@ def in_exp(x):
 
 
 def in_exp_dual(x):
-    # TODO(sbarratt): need to make the numerics safe here, maybe using logs
     return (np.isclose(x[0], 0) and x[1] >= 0 and x[2] >= 0) or (
         x[0] < 0 and -x[0] * np.exp(x[1] / x[0]) <= np.e * x[2])
 
@@ -141,6 +140,38 @@ def _proj(x, cone, dual=False):
             offset += 3
         # via Moreau
         return x - out if dual else out
+    else:
+        raise NotImplementedError(f"{cone} not implemented")
+
+
+def _dproj_explicit(x, cone, dual=False):
+    shape = (x.size, x.size)
+    if cone == ZERO:
+        return sparse.eye(*shape) if dual else sparse.csc_matrix(shape)
+    elif cone == POS:
+        return sparse.diags(.5 * (np.sign(x) + 1), format="csc")
+    elif cone == SOC:
+        t = x[0]
+        z = x[1:]
+        norm_z = np.linalg.norm(z, 2)
+        if norm_z <= t:
+            return sparse.eye(*shape)
+        elif norm_z <= -t:
+            return sparse.csc_matrix(shape)
+        else:
+            z = z.reshape(z.size)
+            unit_z = z / norm_z
+            scale_factor = 1.0 / (2 * norm_z)
+            t_plus_norm_z = t + norm_z
+
+            return scale_factor * np.bmat([
+                [np.array([[norm_z]]), z[np.newaxis, :]],
+                [z[:, np.newaxis], t_plus_norm_z *
+                    np.eye(z.size) - t * np.outer(unit_z, unit_z)]
+            ])
+    elif cone == EXP:
+        DP = _dproj(x, cone, dual=dual)
+        return DP @ np.eye(DP.shape[0])
     else:
         raise NotImplementedError(f"{cone} not implemented")
 
@@ -281,6 +312,35 @@ def pi(x, cones, dual=False):
                 x[offset:offset + dim], cone, dual=dual)
             offset += dim
     return projection
+
+
+def dpi_explicit(x, cones, dual=False):
+    """Derivative of projection onto product of cones (or their duals), at x
+
+    Args:
+        x: NumPy array
+        cones: list of (cone name, size)
+        dual: whether to project onto the dual cone
+
+    Returns:
+        An abstract linear map representing the derivative, with methods
+        `matvec` and `rmatvec`
+    """
+    dprojections = []
+    offset = 0
+    for cone, sz in cones:
+        sz = sz if isinstance(sz, (tuple, list)) else (sz,)
+        if sum(sz) == 0:
+            continue
+        for dim in sz:
+            if cone == PSD:
+                dim = vec_psd_dim(dim)
+            elif cone == EXP:
+                dim *= 3
+            dprojections.append(
+                _dproj_explicit(x[offset:offset + dim], cone, dual=dual))
+            offset += dim
+    return sparse.block_diag(dprojections)
 
 
 def dpi(x, cones, dual=False):
