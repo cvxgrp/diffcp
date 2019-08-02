@@ -184,7 +184,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
             dz = np.linalg.lstsq(M.todense(), rhs, rcond=None)[0]
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
-            it_ref_iters = kwargs.get("it_ref_iters", 50)
+            it_ref_iters = kwargs.get("it_ref_iters", 5)
             M_iref = sparse.bmat([
                 [-sparse.eye(N), M],
                 [MT, rho * sparse.eye(N)]
@@ -194,7 +194,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
             dz = np.zeros(2 * N)
             # iterative refinement
             for _ in range(it_ref_iters):
-                dz = dz + solve(rhs - M_iref @ dz)
+                residual = rhs - M_iref @ dz
+                dz = dz + solve(residual)
             dz = dz[N:]
         elif mode == "lsqr":
             dz = splinalg.lsqr(M, rhs, **kwargs)[0]
@@ -228,7 +229,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
             r = np.linalg.lstsq(MT.todense(), dz, rcond=None)[0]
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
-            it_ref_iters = kwargs.get("it_ref_iters", 50)
+            it_ref_iters = kwargs.get("it_ref_iters", 5)
             MT_iref = sparse.bmat([
                 [-sparse.eye(N), MT],
                 [M, rho * sparse.eye(N)]
@@ -237,8 +238,9 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
             rhs = np.append(np.zeros(N), M @ dz)
             r = np.zeros(2 * N)
             # iterative refinement
-            for _ in range(it_ref_iters):
-                r = r + solve(rhs - MT_iref @ r)
+            for k in range(it_ref_iters):
+                residual = rhs - MT_iref @ r
+                r = r + solve(residual)
             r = r[N:]
         elif mode == "lsqr":
             r = splinalg.lsqr(MT, dz, **kwargs)[0]
