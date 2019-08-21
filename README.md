@@ -124,14 +124,14 @@ If you wish to cite `diffcp`, please use the following BibTex:
 ```
 @article{diffcp2019,
     author       = {Agrawal, A. and Barratt, S. and Boyd, S. and Busseti, E. and Moursi, W.},
-    title        = {Differentiation Through a Cone Program},
+    title        = {Differentiating Through a Cone Program},
     journal      = {arXiv preprint arXiv:1904.09043},
     year         = {2019},
 }
 
 @misc{diffcp,
     author       = {Agrawal, A. and Barratt, S. and Boyd, S. and Busseti, E. and Moursi, W.},
-    title        = {{diffcp}: differentiation of a cone program, version 1.0},
+    title        = {{diffcp}: differentiating of a cone program, version 1.0},
     howpublished = {\url{https://github.com/cvxgrp/diffcp}},
     year         = 2019
 }
