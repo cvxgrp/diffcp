@@ -136,3 +136,14 @@ If you wish to cite `diffcp`, please use the following BibTex:
     year         = 2019
 }
 ```
+
+The following thesis concurrently derived presents the mathematics behind differentiating cone programs.
+```
+@phdthesis{amos2019differentiable,
+  author       = {Brandon Amos},
+  title        = {{Differentiable Optimization-Based Modeling for Machine Learning}},
+  school       = {Carnegie Mellon University},
+  year         = 2019,
+  month        = May,
+}
+```
