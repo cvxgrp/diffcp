@@ -137,7 +137,7 @@ If you wish to cite `diffcp`, please use the following BibTex:
 }
 ```
 
-The following thesis concurrently derived presents the mathematics behind differentiating cone programs.
+The following thesis concurrently derived the mathematics behind differentiating cone programs.
 ```
 @phdthesis{amos2019differentiable,
   author       = {Brandon Amos},
