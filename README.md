@@ -124,9 +124,12 @@ If you wish to cite `diffcp`, please use the following BibTex:
 ```
 @article{diffcp2019,
     author       = {Agrawal, A. and Barratt, S. and Boyd, S. and Busseti, E. and Moursi, W.},
-    title        = {Differentiating Through a Cone Program},
-    journal      = {arXiv preprint arXiv:1904.09043},
+    title        = {Differentiating through a Cone Program},
+    journal      = {Journal of Applied and Numerical Optimization},
     year         = {2019},
+    volume       = {1},
+    number       = {2},
+    pages        = {107--115},
 }
 
 @misc{diffcp,
