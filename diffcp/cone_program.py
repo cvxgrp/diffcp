@@ -110,6 +110,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
             (A, b, and c) to the perturbations `dx`, `dy`, `ds`, which must be
             NumPy arrays. The output `dA` matches the sparsity pattern of `A`.
 
+    Raises:
+        SolverError: if the cone program is infeasible or unbounded.
     """
     data = {
         "A": A,

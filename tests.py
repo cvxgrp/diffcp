@@ -313,15 +313,12 @@ class TestConeProgDiff(unittest.TestCase):
             np.testing.assert_allclose(results[i][2], results_thread[i][2])
 
     def test_infeasible(self):
-        try:
-            c = np.ones(1)
-            b = np.array([1.0, -1.0])
-            A = sparse.csc_matrix(np.ones((2, 1)))
-            cone_dims = {"f": 2}
+        c = np.ones(1)
+        b = np.array([1.0, -1.0])
+        A = sparse.csc_matrix(np.ones((2, 1)))
+        cone_dims = {"f": 2}
+        with self.assertRaises(cone_prog.SolverError, msg='Solver scs returned status.*'):
             cone_prog.solve_and_derivative(A, b, c, cone_dims)
-            self.assertTrue(False)
-        except cone_prog.SolverError:
-            pass
 
 if __name__ == '__main__':
     np.random.seed(0)
