@@ -49,7 +49,7 @@ This function returns a primal-dual solution `x`, `y`, and `s`, along with
 functions for evaluating the derivative and its adjoint (transpose).
 In the case that the problem is not solved, i.e. SCS returns something
 other than "Solved" or "Solved/Innacurate" for status, we raise
-a `SolverError` Exception, defined [here](diffcp/cone_program.py).
+a `SolverError` Exception, defined in [this](diffcp/cone_program.py) file.
 These functions respectively compute right and left multiplication of the derivative
 of the solution map at `A`, `b`, and `c` by a vector.
 
