@@ -157,6 +157,7 @@ class TestConeProgDiff(unittest.TestCase):
             self._test_dproj(cone_lib.SOC, False, 55)
 
     def test_dproj_psd(self):
+        np.random.seed(1)
         for _ in range(10):
             # n=55 equals k * (k + 1) / 2
             self._test_dproj(cone_lib.PSD, True, 55)
@@ -310,6 +311,17 @@ class TestConeProgDiff(unittest.TestCase):
             np.testing.assert_allclose(results[i][0], results_thread[i][0])
             np.testing.assert_allclose(results[i][1], results_thread[i][1])
             np.testing.assert_allclose(results[i][2], results_thread[i][2])
+
+    def test_infeasible(self):
+        try:
+            c = np.ones(1)
+            b = np.array([1.0, -1.0])
+            A = sparse.csc_matrix(np.ones((2, 1)))
+            cone_dims = {"f": 2}
+            cone_prog.solve_and_derivative(A, b, c, cone_dims)
+            self.assertTrue(False)
+        except cone_prog.SolverError:
+            pass
 
 if __name__ == '__main__':
     np.random.seed(0)
