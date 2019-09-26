@@ -60,7 +60,8 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=No
     return pool.starmap(solve_and_derivative_wrapper, args)
 
 
-def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwargs):
+
+def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwargs):
     """Solves a cone program, returns its derivative as an abstract linear map.
     This function solves a convex cone program, with primal-dual problems
         min.        c^T x                  min.        b^Ty
@@ -110,6 +111,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
             that applies the adjoint of the derivative of the cone program at
             (A, b, and c) to the perturbations `dx`, `dy`, `ds`, which must be
             NumPy arrays. The output `dA` matches the sparsity pattern of `A`.
+    Raises:
+        SolverError: if the cone program is infeasible or unbounded.
     """
     if mode not in ["dense", "sparse", "lsqr"]:
         return NotImplementedError
@@ -126,6 +129,13 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode="lsqr", **kwa
 
     kwargs.setdefault("verbose", False)
     result = scs.solve(data, cone_dict, **kwargs)
+
+    # check status
+    status = result["info"]["status"]
+    if status == "Solved/Innacurate":
+        warnings.warn("Solved/Innacurate.")
+    elif status != "Solved":
+        raise SolverError("Solver scs returned status %s" % status)
 
     x = result["x"]
     y = result["y"]
