@@ -51,7 +51,7 @@ These functions respectively compute right and left multiplication of the deriva
 of the solution map at `A`, `b`, and `c` by a vector.
 In the case that the problem is not solved, i.e. SCS returns something
 other than "Solved" or "Solved/Innacurate" for status, we raise
-a `SolverError` Exception, defined in [this](diffcp/cone_program.py) file.
+a `SolverError` Exception.
 
 #### Arguments
 The arguments `A`, `b`, and `c` correspond to the problem data of a cone program.
