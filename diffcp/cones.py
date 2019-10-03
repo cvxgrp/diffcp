@@ -244,7 +244,7 @@ def _dproj(x, cone, dual=False):
         for _ in range(num_cones):
             x_i = x[offset:offset + 3]
             if dual:
-              x_i = x_i * -1
+                x_i = x_i * -1
             offset += 3
             if in_exp(x_i):
                 ops.append(splinalg.aslinearoperator(sparse.eye(3)))
