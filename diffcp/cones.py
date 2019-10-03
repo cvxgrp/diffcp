@@ -135,7 +135,7 @@ def _proj(x, cone, dual=False):
         for _ in range(num_cones):
             x_i = x[offset:offset + 3]
             if dual:
-                x_i *= -1
+                x_i = x_i * -1
             r, s, t, _ = proj_lib.proj_exp_cone(
                 float(x_i[0]), float(x_i[1]), float(x_i[2]))
             out[offset:offset + 3] = np.array([r, s, t])

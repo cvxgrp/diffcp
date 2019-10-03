@@ -127,10 +127,19 @@ class TestConeProgDiff(unittest.TestCase):
             prob.solve(solver="SCS", eps=1e-10)
             p = cone_lib._proj(x, cone_lib.EXP, dual=False)
             np.testing.assert_allclose(p, var.value, atol=1e-5, rtol=1e-5)
+            # x + Pi_{exp}(-x) = Pi_{exp_dual}(x)
             p_dual = cone_lib._proj(x, cone_lib.EXP, dual=True)
-            # x - Pi_{exp}(x) = Pi_{exp_dual}(x)
+            var = cp.Variable(9)
+            constr = [cp.constraints.ExpCone(var[0], var[1], var[2])]
+            constr.append(cp.constraints.ExpCone(var[3], var[4], var[5]))
+            constr.append(cp.constraints.ExpCone(var[6], var[7], var[8]))
+            obj = cp.Minimize(cp.norm(var[0:3] + x[0:3]) +
+                              cp.norm(var[3:6] + x[3:6]) +
+                              cp.norm(var[6:9] + x[6:9]))
+            prob = cp.Problem(obj, constr)
+            prob.solve(solver="SCS", eps=1e-10)
             np.testing.assert_allclose(
-                p_dual, x - var.value, atol=1e-5, rtol=1e-5)
+                p_dual, x + var.value, atol=1e-5, rtol=1e-5)
 
     def _test_dproj(self, cone, dual, n, x=None):
         if x is None:
