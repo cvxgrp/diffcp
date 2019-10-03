@@ -249,7 +249,7 @@ def _dproj(x, cone, dual=False):
             elif in_exp_dual(-x_i):
                 ops.append(splinalg.aslinearoperator(
                     sparse.csc_matrix((3, 3))))
-            elif x_i[0] < 0 and x_i[1] and not np.isclose(x_i[2], 0):
+            elif x_i[0] < 0 and x_i[1] < 0 and not np.isclose(x_i[2], 0):
                 matvec = lambda y: np.array([
                     y[0], 0, y[2] * 0.5 * (1 + np.sign(x_i[2]))])
                 ops.append(splinalg.LinearOperator((3, 3), matvec=matvec,
@@ -280,8 +280,8 @@ def _dproj(x, cone, dual=False):
         D = as_block_diag_linear_operator(ops)
         if dual:
             return splinalg.LinearOperator((x.size, x.size),
-                                           matvec=lambda v: v - D.matvec(v),
-                                           rmatvec=lambda v: v - D.rmatvec(v))
+                                           matvec=lambda v: v - D.matvec(-v),
+                                           rmatvec=lambda v: v - D.rmatvec(-v))
         else:
             return D
     else:
