@@ -243,13 +243,15 @@ def _dproj(x, cone, dual=False):
         offset = 0
         for _ in range(num_cones):
             x_i = x[offset:offset + 3]
+            if dual:
+              x_i = x_i * -1
             offset += 3
             if in_exp(x_i):
                 ops.append(splinalg.aslinearoperator(sparse.eye(3)))
             elif in_exp_dual(-x_i):
                 ops.append(splinalg.aslinearoperator(
                     sparse.csc_matrix((3, 3))))
-            elif x_i[0] < 0 and x_i[1] < 0 and not np.isclose(x_i[2], 0):
+            elif x_i[0] < 0 and x_i[1] < 0:
                 matvec = lambda y: np.array([
                     y[0], 0, y[2] * 0.5 * (1 + np.sign(x_i[2]))])
                 ops.append(splinalg.LinearOperator((3, 3), matvec=matvec,
@@ -266,13 +268,15 @@ def _dproj(x, cone, dual=False):
                 x_mu_exp_x_y = x_st * mu_exp_x_y
                 M = np.zeros((4, 4))
                 M[:, 0] = np.array([
-                    1 + mu_exp_x_y / y_st, -x_mu_exp_x_y / (y_st ** 2),
+                    1 + mu_exp_x_y / y_st,
+                    -x_mu_exp_x_y / (y_st ** 2),
                     0,
                     exp_x_y])
                 M[:, 1] = np.array([
                     -x_mu_exp_x_y / (y_st ** 2),
                     1 + x_st * x_mu_exp_x_y / (y_st ** 3),
-                    0, exp_x_y - x_st * exp_x_y / y_st])
+                    0,
+                    exp_x_y - x_st * exp_x_y / y_st])
                 M[:, 2] = np.array([0, 0, 1, -1])
                 M[:, 3] = np.array([
                     exp_x_y, exp_x_y - x_st * exp_x_y / y_st, -1, 0])
@@ -280,8 +284,8 @@ def _dproj(x, cone, dual=False):
         D = as_block_diag_linear_operator(ops)
         if dual:
             return splinalg.LinearOperator((x.size, x.size),
-                                           matvec=lambda v: v - D.matvec(-v),
-                                           rmatvec=lambda v: v - D.rmatvec(-v))
+                                           matvec=lambda v: v - D.matvec(v),
+                                           rmatvec=lambda v: v - D.rmatvec(v))
         else:
             return D
     else:
