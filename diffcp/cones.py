@@ -2,6 +2,7 @@ import numpy as np
 import _proj as proj_lib
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
+import warnings
 
 ZERO = "f"
 POS = "l"
@@ -13,6 +14,8 @@ POWER = "p"
 
 # The ordering of CONES matches SCS.
 CONES = [ZERO, POS, SOC, PSD, EXP, EXP_DUAL, POWER]
+
+CONE_THRESH = 1e-6
 
 
 def parse_cone_dict(cone_dict):
@@ -63,14 +66,14 @@ def psd_dim(x):
 
 
 def in_exp(x):
-    return (x[0] <= 0 and np.isclose(x[1], 0) and x[2] >= 0) or (x[1] > 0 and
-                                                                 x[1] * np.exp(x[0] / x[1]) <= x[2])
+    return (x[0] <= 0 and x[1] == 0 and x[2] >= 0) or (x[1] > 0 and
+                                                                 x[1] * np.exp(x[0] / x[1]) - x[2] <= CONE_THRESH)
 
 
 def in_exp_dual(x):
     # TODO(sbarratt): need to make the numerics safe here, maybe using logs
-    return (np.isclose(x[0], 0) and x[1] >= 0 and x[2] >= 0) or (
-        x[0] < 0 and -x[0] * np.exp(x[1] / x[0]) <= np.e * x[2])
+    return (x[0] == 0 and x[1] >= 0 and x[2] >= 0) or (
+        x[0] < 0 and -x[0] * np.exp(x[1] / x[0]) - np.e * x[2] <= CONE_THRESH)
 
 
 def unvec_symm(x, dim):
@@ -222,34 +225,28 @@ def _dproj(x, cone, dual=False):
                     sparse.csc_matrix((3, 3))))
             elif x_i[0] < 0 and x_i[1] < 0:
                 matvec = lambda y: np.array([
-                    y[0], 0, y[2] * 0.5 * (1 + np.sign(x_i[2]))])
+                    y[0], 0, y[2] * (x_i[2] >= 0)])
                 ops.append(splinalg.LinearOperator((3, 3), matvec=matvec,
                                                    rmatvec=matvec))
             else:
                 # TODO(akshayka): Cache projection if this is a bottleneck
-                # TODO(akshayka): y_st is sometimes zero ...
-                x_st, y_st, _, mu = proj_lib.proj_exp_cone(x_i[0], x_i[1],
+                r, s, _, t = proj_lib.proj_exp_cone(x_i[0], x_i[1],
                                                            x_i[2])
-                if np.equal(y_st, 0):
-                    y_st = np.abs(x_st)
-                exp_x_y = np.exp(x_st / y_st)
-                mu_exp_x_y = mu * exp_x_y
-                x_mu_exp_x_y = x_st * mu_exp_x_y
-                M = np.zeros((4, 4))
-                M[:, 0] = np.array([
-                    1 + mu_exp_x_y / y_st,
-                    -x_mu_exp_x_y / (y_st ** 2),
-                    0,
-                    exp_x_y])
-                M[:, 1] = np.array([
-                    -x_mu_exp_x_y / (y_st ** 2),
-                    1 + x_st * x_mu_exp_x_y / (y_st ** 3),
-                    0,
-                    exp_x_y - x_st * exp_x_y / y_st])
-                M[:, 2] = np.array([0, 0, 1, -1])
-                M[:, 3] = np.array([
-                    exp_x_y, exp_x_y - x_st * exp_x_y / y_st, -1, 0])
-                ops.append(splinalg.aslinearoperator(np.linalg.inv(M)[:3, :3]))
+                # TODO(akshayka): s is sometimes zero ...
+                if np.equal(s, 0):
+                    warnings.warn("Degenerate projection onto exponential cone.")
+                    s = np.abs(r)
+                l = t - x_i[2]  # t - t0
+                alpha = np.exp(r / s)
+                beta = l * r / (s**2) * alpha
+
+                J_inv = np.array([[alpha, (-r + s) / s * alpha, -1, 0],
+                                [1 + l / s * alpha, -beta, 0, alpha],
+                                [-beta, 1 + beta * r / s,
+                                    0, (1 - r / s) * alpha],
+                                [0, 0, 1, -1]])
+                J = np.linalg.inv(J_inv)[0:3, 1:]
+                ops.append(splinalg.aslinearoperator(J))
         D = as_block_diag_linear_operator(ops)
         if dual:
             return splinalg.LinearOperator((x.size, x.size),
