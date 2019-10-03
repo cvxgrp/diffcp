@@ -148,7 +148,7 @@ class TestConeProgDiff(unittest.TestCase):
         dx = 1e-6 * np.random.randn(n)
         proj_x = cone_lib._proj(x, cone, dual)
         z = cone_lib._proj(x + dx, cone, dual)
-        np.testing.assert_allclose(Dpi@dx, z - proj_x, atol=1e-4, rtol=1e-4)
+        np.testing.assert_allclose(Dpi @ dx, z - proj_x, atol=1e-4, rtol=1e-4)
 
     def test_dproj_zero(self):
         for _ in range(10):

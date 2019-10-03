@@ -9,7 +9,7 @@ typedef int scs_int;
 
 #define CONE_TOL (1e-8)
 #define CONE_THRESH (1e-6)
-#define EXP_CONE_MAX_ITERS (100)
+#define EXP_CONE_MAX_ITERS (200)
 
 #define ABS(x) (((x) < 0) ? -(x) : (x))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
