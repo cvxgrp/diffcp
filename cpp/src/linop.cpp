@@ -10,37 +10,32 @@ LinearOperator::LinearOperator(
 }
 
 LinearOperator LinearOperator::operator+(const LinearOperator &obj) {
-  std::function<Vector(const Vector &)> result_matvec = [this,
-                                                         obj](const Vector &x) {
-    Vector sum = matvec(x) + obj.matvec(x);
-    return sum;
+  const VecFn result_matvec = [this, obj](const Vector &x) -> Vector {
+    return matvec(x) + obj.matvec(x);
   };
-  const auto result_rmatvec = [this, obj](const Vector &x) {
-    Vector sum = rmatvec(x) + obj.matvec(x);
-    return sum;
+  const VecFn result_rmatvec = [this, obj](const Vector &x) -> Vector {
+    return rmatvec(x) + obj.matvec(x);
   };
   LinearOperator result(m, n, result_matvec, result_rmatvec);
   return result;
 }
 
 LinearOperator LinearOperator::operator-(const LinearOperator &obj) {
-  const auto result_matvec = [this, obj](const Vector &x) {
-    Vector sum = matvec(x) + obj.matvec(-x);
-    return sum;
+  const VecFn result_matvec = [this, obj](const Vector &x) -> Vector {
+    return matvec(x) + obj.matvec(-x);
   };
-  const auto result_rmatvec = [this, obj](const Vector &x) {
-    Vector sum = rmatvec(x) + obj.rmatvec(-x);
-    return sum;
+  const VecFn result_rmatvec = [this, obj](const Vector &x) -> Vector {
+    return rmatvec(x) + obj.rmatvec(-x);
   };
   LinearOperator result(m, n, result_matvec, result_rmatvec);
   return result;
 }
 
 LinearOperator LinearOperator::operator*(const LinearOperator &obj) {
-  const auto result_matvec = [this, obj](const Vector &x) {
+  const VecFn result_matvec = [this, obj](const Vector &x) -> Vector {
     return matvec(obj.matvec(x));
   };
-  const auto result_rmatvec = [this, obj](const Vector &x) {
+  const VecFn result_rmatvec = [this, obj](const Vector &x) -> Vector {
     return obj.rmatvec(rmatvec(x));
   };
   LinearOperator result(m, n, result_matvec, result_rmatvec);

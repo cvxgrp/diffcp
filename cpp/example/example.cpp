@@ -10,7 +10,7 @@ int main() {
     return y;
   };
 
-  const auto rmatvec = [](const Vector &x) {
+  const auto rmatvec = [](const Vector &x) -> Vector {
     Vector y = Vector::Zero(2);
     y[0] = 1 * x[0] + 3 * x[1];
     y[1] = 2 * x[0] + 4 * x[1];
