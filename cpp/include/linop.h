@@ -4,27 +4,26 @@
 #include <functional>
 #include <vector>
 
-class LinearOperator {
-    /**
-     * m x n linear operator
-    */
-    public:
-        int m;
-        int n;
-        std::function<Vector(const Vector&)> matvec;
-        std::function<Vector(const Vector&)> rmatvec;
+using VecFn = std::function<Vector(const Vector &)>;
 
-        LinearOperator() {};
-        LinearOperator(
-            int rows,
-            int cols,
-            const std::function<Vector(const Vector&)>& matvec_in,
-            const std::function<Vector(const Vector&)>& rmatvec_in);
-        LinearOperator operator+(LinearOperator const& obj);
-        LinearOperator operator-(LinearOperator const& obj);
-        LinearOperator operator*(LinearOperator const& obj);
-        void transpose() {return std::swap(matvec, rmatvec);}
+class LinearOperator {
+  /**
+   * m x n linear operator
+   */
+public:
+  int m;
+  int n;
+  VecFn matvec;
+  VecFn rmatvec;
+
+  LinearOperator(){};
+  explicit LinearOperator(int rows, int cols, const VecFn &matvec_in,
+                          const VecFn &rmatvec_in);
+  LinearOperator operator+(const LinearOperator &obj);
+  LinearOperator operator-(const LinearOperator &obj);
+  LinearOperator operator*(const LinearOperator &obj);
+  void transpose() { return std::swap(matvec, rmatvec); }
 };
 
-LinearOperator block_diag(const std::vector<LinearOperator>& linear_operators);
+LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators);
 
