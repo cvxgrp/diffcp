@@ -233,33 +233,35 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
   return result;
 }
 
-std::vector<LsqrResult> lsqr_batch(const std::vector<LinearOperator> &As, const std::vector<Vector> &bs,
-            const double damp, const double atol, const double btol, const double conlim, int iter_lim, int num_threads) {
-  const int num_threads_allowed = std::thread::hardware_concurrency();
+// std::vector<LsqrResult> lsqr_batch(const std::vector<LinearOperator> &As, const std::vector<Vector> &bs,
+//             const double damp, const double atol, const double btol, const double conlim, int iter_lim, int num_threads) {
+//   const int num_threads_allowed = std::thread::hardware_concurrency();
 
-  if (num_threads == -1 || num_threads > num_threads_allowed) {
-    num_threads = num_threads_allowed;
-  }
-  if (num_threads == 0) {
-    num_threads = 1;
-  }
+//   if (num_threads == -1 || num_threads > num_threads_allowed) {
+//     num_threads = num_threads_allowed;
+//   }
+//   if (num_threads == 0) {
+//     num_threads = 1;
+//   }
 
-  std::vector<std::thread> threads;
-  threads.reserve(num_threads);
+//   std::vector<std::thread> threads;
+//   threads.reserve(num_threads);
 
-  std::vector<LsqrResult> results;
-  results.reserve(As.size());
+//   std::vector<LsqrResult> results;
+//   results.reserve(As.size());
 
-  for (auto i = 0; i < num_threads; i++) {
-    LinearOperator A = As[i];
-    Vector b = bs[i];
-    std::function<void()> func = [&A, &b, damp, atol, btol, conlim, iter_lim]() {
-      
-    };
-    std::thread()
+//   for (auto i = 0; i < As.size(); i++) {
+//     LinearOperator A = As[i];
+//     Vector b = bs[i];
+//     LsqrResult result;
+//     results.push_back(result);
+//     std::function<void()> func = [&A, &b, damp, atol, btol, conlim, iter_lim, &result]() {
+//       result = lsqr(A, b, damp, atol, btol, conlim, iter_lim);
+//     };
+//     std::thread()
 
-  }
-}
+//   }
+// }
 
 void print_result(const LsqrResult& result) {
   std::cout << "istop: " << result.istop << std::endl;
