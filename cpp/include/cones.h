@@ -24,4 +24,5 @@ typedef struct Cone {
  *    A linear operator representing the derivative, at x, of the projection
  *    onto the cone.
  */
-LinearOperator dprojection(Vector x, std::vector<Cone> cones, bool dual);
+LinearOperator dprojection(const Vector &x, const std::vector<Cone> &cones,
+                           bool dual);
