@@ -23,7 +23,7 @@ Vector _solve_derivative(const SparseMatrix& Q, const std::vector<Cone>& cones,
     const Vector& u, const Vector& v, double w, const Vector& rhs) {
   int N = u.size() + v.size() + 1;
 
-  LinearOperator M = (Q - identity(N)) * dpi(u, v, w, cones) + identity(N);
+  LinearOperator M = (aslinearoperator(Q) - identity(N)) * dpi(u, v, w, cones) + identity(N);
   LsqrResult result = lsqr(M, rhs);
   return result.x;
 }
@@ -32,7 +32,7 @@ Vector _solve_adjoint_derivative(const SparseMatrix& Q, const std::vector<Cone>&
     const Vector& u, const Vector& v, double w, const Vector& dz) {
   int N = u.size() + v.size() + 1;
 
-  LinearOperator MT = dpi(u, v, w, cones).transpose() * (Q.transpose() - identity(N)) + identity(N);
+  LinearOperator MT = dpi(u, v, w, cones).transpose() * (aslinearoperator(Q).transpose() - identity(N)) + identity(N);
   LsqrResult result = lsqr(MT, dz);
-  return result.x
+  return result.x;
 }
