@@ -208,29 +208,22 @@ LinearOperator _dprojection_zero(const Vector &x, bool dual) {
 }
 
 LinearOperator _dprojection(const Vector &x, ConeType type, bool dual) {
-  switch (type) {
-  case ZERO: {
+  if (type == ZERO) {
     return _dprojection_zero(x, dual);
-  }
-  case POS: {
+  } else if (type ==POS) {
     return _dprojection_pos(x);
-  }
-  case SOC: {
+  } else if (type == SOC) {
     return _dprojection_soc(x);
-  }
-  case PSD: {
+  } else if (type == PSD) {
     return _dprojection_psd(x);
-  }
-  case EXP: {
+  } else {
+    assert(type == EXP);
     return _dprojection_exp(x, dual);
-  }
-  default:
-    // TODO(akshayka): error out
-    assert(false);
   }
 }
 
-LinearOperator dprojection(Vector x, std::vector<Cone> cones, bool dual) {
+LinearOperator dprojection(const Vector &x, std::vector<Cone> cones,
+                           bool dual) {
   std::vector<LinearOperator> lin_ops;
 
   int offset = 0;
