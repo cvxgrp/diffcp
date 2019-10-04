@@ -4,6 +4,8 @@
 #include <functional>
 #include <vector>
 
+using VecFn = std::function<Vector(const Vector &)>;
+
 class LinearOperator {
   /**
    * m x n linear operator
@@ -11,13 +13,12 @@ class LinearOperator {
 public:
   int m;
   int n;
-  std::function<Vector(const Vector &)> matvec;
-  std::function<Vector(const Vector &)> rmatvec;
+  VecFn matvec;
+  VecFn rmatvec;
 
   LinearOperator(){};
-  LinearOperator(int rows, int cols,
-                 const std::function<Vector(const Vector &)> &matvec_in,
-                 const std::function<Vector(const Vector &)> &rmatvec_in);
+  explicit LinearOperator(int rows, int cols, const VecFn &matvec_in,
+                          const VecFn &rmatvec_in);
   LinearOperator operator+(const LinearOperator &obj);
   LinearOperator operator-(const LinearOperator &obj);
   LinearOperator operator*(const LinearOperator &obj);
