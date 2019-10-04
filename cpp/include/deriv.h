@@ -2,7 +2,6 @@
 
 #include "linop.h"
 #include "cones.h"
-#include "lsqr.h"
 
-Vector _solve_derivative(ListOfCones cones, Vector z, Vector rhs);
-Vector _solve_adjoint_derivative(ListOfCones cones, Vector z, Vector rhs);
+Vector _solve_derivative(const SparseMatrix& Q, const ListOfCones cones, const Vector& z, const Vector& rhs);
+Vector _solve_adjoint_derivative(const SparseMatrix& Q, const ListOfCones cones, const Vector& z, const Vector& dz);
