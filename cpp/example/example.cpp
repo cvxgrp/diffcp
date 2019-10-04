@@ -47,7 +47,7 @@ int main() {
   std::vector<LinearOperator> vecs {A, A};
   LinearOperator E = block_diag(vecs);
 
-  std::cout << E.m << ", " << E.n << std::endl;
+  std::cout << "E " << E.m << ", " << E.n << std::endl;
 
   Vector in = Vector::Zero(4);
   Vector zed4 = E.rmatvec(in);
@@ -57,4 +57,8 @@ int main() {
   LsqrResult result = lsqr(A, x);
   std::cout << result.x[0] << ", " << result.x[1] << std::endl;
   print_result(result);
+
+  Eigen::Matrix3d mat;
+  mat << 1, 2, 3, 4, 5, 6, 7, 8, 9;
+  std::cout << Eigen::Matrix3d(mat.triangularView<Eigen::Lower>()) << "\n\n";
 }
