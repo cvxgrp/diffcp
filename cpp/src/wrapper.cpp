@@ -11,6 +11,9 @@ namespace py = pybind11;
 PYBIND11_MODULE(_diffcp, m) {
   m.doc() = "Differentiating through Cone Programs C++ Extension";
 
+  py::class_<LinearOperator>(m, "LinearOperator");
+  py::class_<Cone>(m, "Cone");
   m.def("_solve_derivative", &_solve_derivative);
   m.def("_solve_adjoint_derivative", &_solve_adjoint_derivative);
+  m.def("dprojection", &dprojection);
 }
