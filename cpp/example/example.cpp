@@ -1,8 +1,9 @@
 #include "linop.h"
 #include <iostream>
+#include <vector>
 
 int main() {
-  const std::function<Vector(const Vector &)> matvec =
+  const VecFn matvec =
       [](const Vector &x) -> Vector {
     Vector y = Vector::Zero(2);
     y[0] = 1 * x[0] + 2 * x[1];
@@ -10,7 +11,7 @@ int main() {
     return y;
   };
 
-  const auto rmatvec = [](const Vector &x) -> Vector {
+  const VecFn rmatvec = [](const Vector &x) -> Vector {
     Vector y = Vector::Zero(2);
     y[0] = 1 * x[0] + 3 * x[1];
     y[1] = 2 * x[0] + 4 * x[1];
@@ -36,4 +37,17 @@ int main() {
   LinearOperator C = A * A;
   Vector zed = C.matvec(x);
   std::cout << zed[0] << ", " << zed[1] << std::endl;
+
+  LinearOperator D = A.transpose();
+  zed = D.matvec(x);
+  std::cout << zed[0] << ", " << zed[1] << std::endl;
+
+  std::vector<LinearOperator> vecs {A, A};
+  LinearOperator E = block_diag(vecs);
+
+  std::cout << E.m << ", " << E.n << std::endl;
+
+  Vector in = Vector::Zero(4);
+  Vector zed4 = E.rmatvec(in);
+  std::cout << zed4[0] << ", " << zed4[1] << ", " << zed4[2] << ", " << zed4[3] << std::endl;
 }

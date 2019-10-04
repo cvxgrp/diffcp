@@ -8,6 +8,7 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
+from diffcp_cpp import _solve_derivative, _solve_adjoint_derivative
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -143,14 +144,12 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
     cones = cone_lib.parse_cone_dict(cone_dict)
     z = (x, y - s, np.array([1]))
     u, v, w = z
-    D_proj_dual_cone = cone_lib.dpi(v, cones, dual=True)
     Q = sparse.bmat([
         [None, A.T, np.expand_dims(c, - 1)],
         [-A, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
-    M = splinalg.aslinearoperator(Q - sparse.eye(N)) @ dpi(
-        z, cones) + splinalg.aslinearoperator(sparse.eye(N))
+    D_proj_dual_cone = cone_lib.dpi(v, cones, dual=True)
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
 
@@ -177,7 +176,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         if np.allclose(rhs, 0):
             dz = np.zeros(rhs.size)
         else:
-            dz = splinalg.lsqr(M, rhs, **kwargs)[0]
+            dz = _solve_derivative(cones, z, rhs, **kwargs)
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
         dy = D_proj_dual_cone@dv - y * dw
@@ -202,8 +201,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         if np.allclose(dz, 0):
             r = np.zeros(dz.shape)
         else:
-            r = splinalg.lsqr(
-                cone_lib.transpose_linear_operator(M), dz, **kwargs)[0]
+            r = _solve_adjoint_derivative(cones, z, rhs, **kwargs)
 
         # dQ is the outer product of pi_z and r. Instead of materializing this,
         # the code below only computes the entries needed to compute dA, db, dc
