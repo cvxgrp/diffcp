@@ -222,7 +222,7 @@ LinearOperator _dprojection(const Vector &x, ConeType type, bool dual) {
   }
 }
 
-LinearOperator dprojection(const Vector &x, std::vector<Cone> cones,
+LinearOperator dprojection(const Vector &x, const std::vector<Cone> &cones,
                            bool dual) {
   std::vector<LinearOperator> lin_ops;
 
