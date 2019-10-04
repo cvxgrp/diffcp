@@ -8,7 +8,7 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
-from diffcp_cpp import _solve_derivative, _solve_adjoint_derivative
+from _diffcp import _solve_derivative, _solve_adjoint_derivative
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -210,7 +210,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
                     break
                 dz = dz + solve(np.append(np.zeros(N), residual))[N:]
         elif mode == "lsqr":
-            dz = _solve_derivative(cones, z, rhs, **kwargs)
+            dz = _solve_derivative(Q, cones, z, rhs, **kwargs)
 
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
@@ -259,7 +259,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         elif mode == "lsqr":
             r = splinalg.lsqr(MT, dz, **kwargs)[0]
         else:
-            r = _solve_adjoint_derivative(cones, z, rhs, **kwargs)
+            r = _solve_adjoint_derivative(Q, cones, z, rhs, **kwargs)
 
         values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
         dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)

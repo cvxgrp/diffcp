@@ -94,3 +94,32 @@ LinearOperator aslinearoperator(const SparseMatrix& A) {
   const VecFn result_rmatvec = [A](const Vector &x) -> Vector { return A.transpose()*x; };
   return LinearOperator(A.rows(), A.cols(), result_matvec, result_rmatvec);
 }
+
+LinearOperator zero(int m, int n) {
+  const VecFn matvec = [](const Vector &x) -> Vector {
+    return Vector::Zero(x.size());
+  };
+  return LinearOperator(m, n, matvec, matvec);
+}
+
+LinearOperator identity(int n) {
+  const VecFn matvec = [](const Vector &x) -> Vector { return x; };
+  return LinearOperator(n, n, matvec, matvec);
+}
+
+LinearOperator diag(const Array &coefficients) {
+  const VecFn matvec = [coefficients](const Vector &x) -> Vector {
+    return (coefficients * x.array()).matrix();
+  };
+  return LinearOperator(coefficients.size(), coefficients.size(), matvec,
+                        matvec);
+}
+
+LinearOperator scalar(double num) {
+  const VecFn matvec = [num](const Vector &x) -> Vector {
+    Vector result = Vector::Zero(1);
+    result[0] = num * x[0];
+    return result;
+  };
+  return LinearOperator(1, 1, matvec, matvec);
+}

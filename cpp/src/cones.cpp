@@ -4,25 +4,6 @@
 #include "cones.h"
 #include "exp.h"
 
-LinearOperator zero(int m, int n) {
-  const VecFn matvec = [](const Vector &x) -> Vector {
-    return Vector::Zero(x.size());
-  };
-  return LinearOperator(m, n, matvec, matvec);
-}
-
-LinearOperator identity(int n) {
-  const VecFn matvec = [](const Vector &x) -> Vector { return x; };
-  return LinearOperator(n, n, matvec, matvec);
-}
-
-LinearOperator diag(const Array &coefficients) {
-  const VecFn matvec = [coefficients](const Vector &x) -> Vector {
-    return (coefficients * x.array()).matrix();
-  };
-  return LinearOperator(coefficients.size(), coefficients.size(), matvec,
-                        matvec);
-}
 
 Vector lower_triangular_from_matrix(const Matrix &matrix) {
 
