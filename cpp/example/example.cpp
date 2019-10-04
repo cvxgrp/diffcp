@@ -1,4 +1,5 @@
 #include "linop.h"
+#include "lsqr.h"
 #include <iostream>
 #include <vector>
 
@@ -24,6 +25,7 @@ int main() {
   x[0] = 1.0;
   x[1] = 0.0;
 
+  std::cout << std::endl << "Abstract Linear Operators:" << std::endl;
   Vector y = A.matvec(x);
   std::cout << y[0] << ", " << y[1] << std::endl;
 
@@ -50,4 +52,9 @@ int main() {
   Vector in = Vector::Zero(4);
   Vector zed4 = E.rmatvec(in);
   std::cout << zed4[0] << ", " << zed4[1] << ", " << zed4[2] << ", " << zed4[3] << std::endl;
+
+  std::cout << std::endl << "LSQR:" << std::endl;
+  LsqrResult result = lsqr(A, x);
+  std::cout << result.x[0] << ", " << result.x[1] << std::endl;
+  print_result(result);
 }
