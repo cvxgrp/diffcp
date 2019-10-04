@@ -8,7 +8,7 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
-from diffcp_cpp import _solve_derivative, _solve_adjoint_derivative
+from _diffcp import _solve_derivative, _solve_adjoint_derivative
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -176,7 +176,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         if np.allclose(rhs, 0):
             dz = np.zeros(rhs.size)
         else:
-            dz = _solve_derivative(cones, z, rhs, **kwargs)
+            dz = _solve_derivative(Q, cones, z, rhs, **kwargs)
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
         dy = D_proj_dual_cone@dv - y * dw
@@ -201,7 +201,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         if np.allclose(dz, 0):
             r = np.zeros(dz.shape)
         else:
-            r = _solve_adjoint_derivative(cones, z, rhs, **kwargs)
+            r = _solve_adjoint_derivative(Q, cones, z, rhs, **kwargs)
 
         # dQ is the outer product of pi_z and r. Instead of materializing this,
         # the code below only computes the entries needed to compute dA, db, dc

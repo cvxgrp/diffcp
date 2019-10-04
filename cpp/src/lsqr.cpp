@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <math.h>
 #include <iostream>
+#include <thread>
 
 inline double sign(const double& x) {
   if (x < 0) {
@@ -230,6 +231,34 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
   };
 
   return result;
+}
+
+std::vector<LsqrResult> lsqr_batch(const std::vector<LinearOperator> &As, const std::vector<Vector> &bs,
+            const double damp, const double atol, const double btol, const double conlim, int iter_lim, int num_threads) {
+  const int num_threads_allowed = std::thread::hardware_concurrency();
+
+  if (num_threads == -1 || num_threads > num_threads_allowed) {
+    num_threads = num_threads_allowed;
+  }
+  if (num_threads == 0) {
+    num_threads = 1;
+  }
+
+  std::vector<std::thread> threads;
+  threads.reserve(num_threads);
+
+  std::vector<LsqrResult> results;
+  results.reserve(As.size());
+
+  for (auto i = 0; i < num_threads; i++) {
+    LinearOperator A = As[i];
+    Vector b = bs[i];
+    std::function<void()> func = [&A, &b, damp, atol, btol, conlim, iter_lim]() {
+      
+    };
+    std::thread()
+
+  }
 }
 
 void print_result(const LsqrResult& result) {
