@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Eigen/Sparse"
 #include "Eigen/Dense"
+#include "Eigen/Sparse"
 
 using Vector = Eigen::VectorXd;
 using Matrix = Eigen::MatrixXd;
