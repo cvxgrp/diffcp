@@ -48,12 +48,12 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
+    setup_requires=['pybind11 >= 2.4'],
     install_requires=[
         "numpy >= 1.15",
         "scs >= 2.1.1",
         "scipy >= 1.1.0",
         "pybind11 >= 2.4"],
-    setup_requires=['pybind11 >= 2.4'],
     url="http://github.com/cvxgrp/diffcp/",
     ext_modules=ext_modules,
     license="Apache License, Version 2.0",
