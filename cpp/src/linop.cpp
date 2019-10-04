@@ -82,3 +82,15 @@ LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators) {
 
   return LinearOperator(rows, cols, result_matvec, result_rmatvec);
 }
+
+LinearOperator aslinearoperator(const Matrix& A) {
+  const VecFn result_matvec = [A](const Vector &x) -> Vector { return A*x; }
+  const VecFn result_rmatvec = [A](const Vector &x) -> Vector { return A.transpose()*x; }
+  return LinearOperator(A.rows(), A.cols(), result_matvec, result_rmatvec);
+}
+
+LinearOperator aslinearoperator(const SparseMatrix& A) {
+  const VecFn result_matvec = [A](const Vector &x) -> Vector { return A*x; }
+  const VecFn result_rmatvec = [A](const Vector &x) -> Vector { return A.transpose()*x; }
+  return LinearOperator(A.rows(), A.cols(), result_matvec, result_rmatvec);
+}
