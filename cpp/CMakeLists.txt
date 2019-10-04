@@ -11,7 +11,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(DIFFCP_SRC
     "src/cones.cpp"
     "src/deriv.cpp"
-    "src/exp.c"
     "src/linop.cpp"
     "src/lsqr.cpp"
 )
