@@ -56,7 +56,6 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
 
   int itn = 0;
   int istop = 0;
-  int nstop = 0;
   double ctol = 0.0;
   if (conlim > 0) {
     ctol = 1.0 / conlim;
