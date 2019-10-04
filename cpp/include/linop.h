@@ -17,7 +17,7 @@ public:
   const VecFn rmatvec;
 
   explicit LinearOperator(int rows, int cols, const VecFn &matvec_in,
-                          const VecFn &rmatvec_in) : m(rows), n(cols), matvec(matvec_in), rmatvec(rmatvec) {};
+                          const VecFn &rmatvec_in) : m(rows), n(cols), matvec(matvec_in), rmatvec(rmatvec_in) {};
   LinearOperator operator+(const LinearOperator &obj);
   LinearOperator operator-(const LinearOperator &obj);
   LinearOperator operator*(const LinearOperator &obj);
