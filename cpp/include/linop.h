@@ -11,19 +11,17 @@ class LinearOperator {
    * m x n linear operator
    */
 public:
-  int m;
-  int n;
-  VecFn matvec;
-  VecFn rmatvec;
+  const int m;
+  const int n;
+  const VecFn matvec;
+  const VecFn rmatvec;
 
-  LinearOperator(){};
   explicit LinearOperator(int rows, int cols, const VecFn &matvec_in,
-                          const VecFn &rmatvec_in);
+                          const VecFn &rmatvec_in) : m(rows), n(cols), matvec(matvec_in), rmatvec(rmatvec) {};
   LinearOperator operator+(const LinearOperator &obj);
   LinearOperator operator-(const LinearOperator &obj);
   LinearOperator operator*(const LinearOperator &obj);
-  void transpose() { return std::swap(matvec, rmatvec); }
+  LinearOperator transpose() { return LinearOperator(n, m, rmatvec, matvec); }
 };
 
 LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators);
-

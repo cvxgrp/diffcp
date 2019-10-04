@@ -1,5 +1,6 @@
 #include "exp.h"
 #include <math.h>
+#include <string.h>
 
 #define CONE_TOL (1e-8)
 #define CONE_THRESH (1e-6)
