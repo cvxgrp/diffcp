@@ -165,7 +165,7 @@ def _dproj_explicit(x, cone, dual=False):
         elif norm_z <= -t:
             return sparse.csc_matrix(shape)
         else:
-            z = z.reshape(z.size)
+            # z = z.reshape(z.size)
             unit_z = z / norm_z
             scale_factor = 1.0 / (2 * norm_z)
             t_plus_norm_z = t + norm_z
