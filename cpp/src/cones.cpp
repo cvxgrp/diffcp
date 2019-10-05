@@ -189,7 +189,7 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
       };
       ops.emplace_back(LinearOperator(3, 3, matvec, matvec));
     } else {
-      double t;
+      double t = 0;
       double rs[3] = {0.0, 0.0, 0.0};
       assert(_proj_exp_cone(rs, &t) == 0);
       double r = rs[0];
