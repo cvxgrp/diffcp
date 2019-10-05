@@ -8,6 +8,7 @@ import time
 import diffcp.cone_program as cone_prog
 import diffcp.cones as cone_lib
 import diffcp.utils as utils
+import _diffcp
 
 
 class TestConeProgDiff(unittest.TestCase):
@@ -187,12 +188,11 @@ class TestConeProgDiff(unittest.TestCase):
             psd_dim = [np.random.randint(1, 10) for _ in range(
                 np.random.randint(1, 10))]
             exp_dim = np.random.randint(3, 18)
-            exp_dim -= (exp_dim % 3)
             cones = [(cone_lib.ZERO, zero_dim), (cone_lib.POS, pos_dim),
                      (cone_lib.SOC, soc_dim), (cone_lib.PSD, psd_dim),
                      (cone_lib.EXP, exp_dim)]
             size = zero_dim + pos_dim + sum(soc_dim) + sum(
-                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + exp_dim
+                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + 3 * exp_dim
             x = np.random.randn(size)
             for dual in [False, True]:
                 proj = cone_lib.pi(x, cones, dual=dual)
@@ -232,20 +232,20 @@ class TestConeProgDiff(unittest.TestCase):
             psd_dim = [np.random.randint(1, 10) for _ in range(
                 np.random.randint(1, 10))]
             exp_dim = np.random.randint(3, 18)
-            exp_dim -= (exp_dim % 3)
             cones = [(cone_lib.ZERO, zero_dim), (cone_lib.POS, pos_dim),
                      (cone_lib.SOC, soc_dim), (cone_lib.PSD, psd_dim),
                      (cone_lib.EXP, exp_dim)]
             size = zero_dim + pos_dim + sum(soc_dim) + sum(
-                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + exp_dim
+                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + 3 * exp_dim
             x = np.random.randn(size)
 
             for dual in [False, True]:
-                Dpi = cone_lib.dpi(x, cones, dual=dual)
+                cone_list_cpp = cone_lib.parse_cone_dict_cpp(cones)
+                Dpi = _diffcp.dprojection(x, cone_list_cpp, dual)
                 proj_x = cone_lib.pi(x, cones, dual=dual)
                 dx = 1e-6 * np.random.randn(size)
                 z = cone_lib.pi(x + dx, cones, dual=dual)
-                np.testing.assert_allclose(Dpi@dx, z - proj_x,
+                np.testing.assert_allclose(Dpi.apply_matvec(dx), z - proj_x,
                                            atol=1e-3, rtol=1e-4)
 
     def test_get_random_like(self):

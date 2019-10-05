@@ -4,6 +4,8 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import warnings
 
+from _diffcp import Cone, ConeType
+
 ZERO = "f"
 POS = "l"
 SOC = "q"
@@ -15,7 +17,21 @@ POWER = "p"
 # The ordering of CONES matches SCS.
 CONES = [ZERO, POS, SOC, PSD, EXP, EXP_DUAL, POWER]
 
+# Map from Python cones to CPP format
+CONE_MAP = {
+    "f": ConeType.ZERO,
+    "l": ConeType.POS,
+    "q": ConeType.SOC,
+    "s": ConeType.PSD,
+    "ep": ConeType.EXP
+}
+
 CONE_THRESH = 1e-6
+
+
+def parse_cone_dict_cpp(cone_list):
+    return [Cone(CONE_MAP[cone], [l] if not isinstance(l, (list, tuple)) else l)
+            for cone, l in cone_list]
 
 
 def parse_cone_dict(cone_dict):
