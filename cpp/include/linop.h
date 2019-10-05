@@ -29,8 +29,8 @@ public:
 };
 
 LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators);
-LinearOperator aslinearoperator(const Matrix& A);
-LinearOperator aslinearoperator(const SparseMatrix& A);
+LinearOperator aslinearoperator(const Matrix &A);
+LinearOperator aslinearoperator(const SparseMatrix &A);
 LinearOperator zero(int m, int n);
 LinearOperator identity(int n);
 LinearOperator diag(const Array &coefficients);
