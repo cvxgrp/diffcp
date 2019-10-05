@@ -8,13 +8,12 @@
 
 namespace py = pybind11;
 
-enum ConeType { ZERO = 0, POS, SOC, PSD, EXP };
-
 PYBIND11_MODULE(_diffcp, m) {
   m.doc() = "Differentiating through Cone Programs C++ Extension";
 
   py::class_<LinearOperator>(m, "LinearOperator");
-  py::class_<Cone>(m, "Cone");
+  py::class_<Cone>(m, "Cone")
+    .def(py::init<ConeType, const std::vector<int> &>());
   py::enum_<ConeType>(m, "ConeType")
     .value("ZERO", ConeType::ZERO)
     .value("POS", ConeType::POS)
