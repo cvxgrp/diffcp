@@ -8,11 +8,19 @@
 
 namespace py = pybind11;
 
+enum ConeType { ZERO = 0, POS, SOC, PSD, EXP };
+
 PYBIND11_MODULE(_diffcp, m) {
   m.doc() = "Differentiating through Cone Programs C++ Extension";
 
   py::class_<LinearOperator>(m, "LinearOperator");
   py::class_<Cone>(m, "Cone");
+  py::enum_<ConeType>(m, "ConeType")
+    .value("ZERO", ConeType::ZERO)
+    .value("POS", ConeType::POS)
+    .value("SOC", ConeType::SOC)
+    .value("PSD", ConeType::PSD)
+    .value("EXP", ConeType::EXP);
   m.def("_solve_derivative", &_solve_derivative);
   m.def("_solve_adjoint_derivative", &_solve_adjoint_derivative);
   m.def("dprojection", &dprojection);
