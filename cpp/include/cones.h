@@ -5,7 +5,7 @@
 #include "eigen_includes.h"
 #include "linop.h"
 
-enum ConeType { ZERO, POS, SOC, PSD, EXP };
+enum ConeType { ZERO = 0, POS, SOC, PSD, EXP };
 
 typedef struct Cone {
   ConeType type;
