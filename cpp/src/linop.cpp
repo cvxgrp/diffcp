@@ -51,8 +51,6 @@ LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators) {
     cols += linop.n;
   }
 
-  std::cout << rows << ", " << cols << std::endl;
-
   const VecFn result_matvec = [linear_operators,
                                rows, cols](const Vector &x) -> Vector {
     assert(x.size() == cols);
