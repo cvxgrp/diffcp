@@ -175,7 +175,7 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
 
     if (in_exp(x_i)) {
       ops.emplace_back(identity(3));
-    } else if (in_exp_dual(x_i)) {
+    } else if (in_exp_dual(-x_i)) {
       ops.emplace_back(zero(3, 3));
     } else if (x_i[0] < 0 && x_i[1] < 0) {
       const VecFn matvec = [x_i](const Vector &y) -> Vector {
@@ -190,12 +190,12 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
       ops.emplace_back(LinearOperator(3, 3, matvec, matvec));
     } else {
       double t = 0;
-      double rs[3] = {0.0, 0.0, 0.0};
+      double rs[3] = {x[0], x[1], x[2]};
       assert(_proj_exp_cone(rs, &t) == 0);
       double r = rs[0];
       double s = rs[1];
       if (s == 0) {
-        // TODO(akshayka): print warning
+        // TODO(akshayka): log a warning
         s = std::abs(r);
       }
       double l = t - x_i[2];

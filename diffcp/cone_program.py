@@ -8,15 +8,7 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
-from _diffcp import _solve_derivative, _solve_adjoint_derivative, Cone, ConeType
-
-MAP = {
-    "f": ConeType.ZERO,
-    "l": ConeType.POS,
-    "q": ConeType.SOC,
-    "s": ConeType.PSD,
-    "exp": ConeType.EXP
-}
+from _diffcp import _solve_derivative, _solve_adjoint_derivative
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -180,10 +172,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
 
-    def parse_cone_dict_cpp(cone_list):
-        return [Cone(MAP[cone], [l] if not isinstance(l, (list, tuple)) else l) for cone, l in cone_list]
-
-    cones_parsed = parse_cone_dict_cpp(cones)
+    cones_parsed = cone_lib.parse_cone_dict_cpp(cones)
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc

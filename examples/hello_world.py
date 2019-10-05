@@ -28,7 +28,6 @@ dA = sparse.csc_matrix((data, nonzeros), shape=A.shape)
 db = 1e-4 * np.random.randn(m)
 dc = 1e-4 * np.random.randn(n)
 dx, dy, ds = D(dA, db, dc)
-print(dx)
 
 # evaluate the adjoint of the derivative
 dx = c

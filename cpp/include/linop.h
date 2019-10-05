@@ -23,6 +23,9 @@ public:
   LinearOperator operator-(const LinearOperator &obj);
   LinearOperator operator*(const LinearOperator &obj);
   LinearOperator transpose() { return LinearOperator(n, m, rmatvec, matvec); }
+
+  Vector apply_matvec(const Vector &x) { return matvec(x); }
+  Vector apply_rmatvec(const Vector &x) { return rmatvec(x); }
 };
 
 LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators);
