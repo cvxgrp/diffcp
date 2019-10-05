@@ -7,10 +7,14 @@
 
 enum ConeType { ZERO, POS, SOC, PSD, EXP };
 
-typedef struct Cone {
-  ConeType type;
-  std::vector<int> sizes;
-} Cone;
+class Cone {
+  public:
+    ConeType type;
+    std::vector<int> sizes;
+
+    Cone(ConeType type, const std::vector<int> &sizes)
+        : type(type), sizes(sizes){};
+};
 
 /* Compute the derivative, at `x`, of a projection onto a cone.
  *
