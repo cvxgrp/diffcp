@@ -8,7 +8,7 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
-from _diffcp import _solve_derivative, _solve_adjoint_derivative
+from _diffcp import dprojection, _solve_derivative, _solve_adjoint_derivative
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -20,24 +20,13 @@ def pi(z, cones):
         [u, cone_lib.pi(v, cones, dual=True), np.maximum(w, 0)])
 
 
-def dpi(z, cones):
-    """Derivative of projection onto R^n x K^* x R_+
-
-     `cones` represents a conex cone K, and K^* is its dual cone.
-    """
-    u, v, w = z
-    return cone_lib.as_block_diag_linear_operator([
-        sparse.eye(np.prod(u.shape)),
-        cone_lib.dpi(v, cones, dual=True),
-        sparse.diags(.5 * (np.sign(w) + 1))
-    ])
-
-
 def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, kwargs):
-    return solve_and_derivative(A, b, c, cone_dict, warm_start=warm_start, **kwargs)
+    return solve_and_derivative(
+        A, b, c, cone_dict, warm_start=warm_start, **kwargs)
 
 
-def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=None, **kwargs):
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1,
+                               warm_starts=None, **kwargs):
     if n_jobs == -1:
         n_jobs = mp.cpu_count()
     batch_size = len(As)
@@ -149,7 +138,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         [-A, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
-    D_proj_dual_cone = cone_lib.dpi(v, cones, dual=True)
+    D_proj_dual_cone = dprojection(
+        v, cone_lib.parse_cone_dict_cpp(cones), True)
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
 
@@ -181,8 +171,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
             dz = _solve_derivative(Q, cones_parsed, u, v, w, rhs)
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
-        dy = D_proj_dual_cone@dv - y * dw
-        ds = D_proj_dual_cone@dv - dv - s * dw
+        dy = D_proj_dual_cone.matvec(dv) - y * dw
+        ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
         return -dx, -dy, -ds
 
     def adjoint_derivative(dx, dy, ds, **kwargs):

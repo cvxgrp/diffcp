@@ -30,3 +30,8 @@ class Cone {
  */
 LinearOperator dprojection(const Vector &x, const std::vector<Cone> &cones,
                            bool dual);
+
+
+Eigen::Vector3d project_exp_cone(const Eigen::Vector3d &x);
+bool in_exp(const Eigen::Vector3d &x);
+bool in_exp_dual(const Eigen::Vector3d &x);

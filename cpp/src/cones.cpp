@@ -109,6 +109,15 @@ int _proj_exp_cone(double *v, double *rho) {
   return 0;
 }
 
+Eigen::Vector3d project_exp_cone(const Eigen::Vector3d &x) {
+  double v[3] = {x[0], x[1], x[2]};
+  double rho = 0;
+  _proj_exp_cone(v, &rho);
+  Eigen::Vector3d projection;
+  projection << v[0], v[1], v[2];
+  return projection;
+}
+
 bool in_exp(const Eigen::Vector3d &x) {
   return (x[0] <= 0 && x[1] == 0 && x[2] >= 0) or
          (x[1] > 0 && x[1] * exp(x[0] / x[1]) - x[2] <= CONE_THRESH);
