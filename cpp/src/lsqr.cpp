@@ -1,10 +1,10 @@
 #include "lsqr.h"
 #include <assert.h>
-#include <math.h>
 #include <iostream>
+#include <math.h>
 #include <thread>
 
-inline double sign(const double& x) {
+inline double sign(const double &x) {
   if (x < 0) {
     return -1.0;
   } else if (x > 0) {
@@ -14,7 +14,7 @@ inline double sign(const double& x) {
   }
 }
 
-inline void _sym_ortho(double a, double b, double& c, double& s, double& r) {
+inline void _sym_ortho(double a, double b, double &c, double &s, double &r) {
   if (b == 0) {
     c = sign(a);
     s = 0.0;
@@ -36,8 +36,9 @@ inline void _sym_ortho(double a, double b, double& c, double& s, double& r) {
   }
 }
 
-LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, const double atol, const double btol, const double conlim,
-            int iter_lim) {
+LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
+                const double atol, const double btol, const double conlim,
+                int iter_lim) {
   int m = A.m;
   int n = A.n;
 
@@ -45,12 +46,12 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
     iter_lim = 2 * A.n;
   }
 
-  assert (iter_lim > 0);
-  assert (b.size() == m);
-  assert (damp >= 0.0);
-  assert (atol >= 0.0);
-  assert (btol >= 0.0);
-  assert (conlim >= 0.0);
+  assert(iter_lim > 0);
+  assert(b.size() == m);
+  assert(damp >= 0.0);
+  assert(atol >= 0.0);
+  assert(btol >= 0.0);
+  assert(conlim >= 0.0);
 
   Vector var = Vector::Zero(n);
 
@@ -196,7 +197,7 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
     test2 = arnorm / (anorm * rnorm);
     test3 = 1.0 / acond;
     t1 = test1 / (1 + anorm * xnorm / bnorm);
-    rtol = btol + atol * anorm *xnorm / bnorm;
+    rtol = btol + atol * anorm * xnorm / bnorm;
 
     if (itn >= iter_lim) {
       istop = 7;
@@ -225,15 +226,16 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
     }
   }
 
-  LsqrResult result = {
-    x, istop, itn, r1norm, r2norm, anorm, acond, arnorm, xnorm
-  };
+  LsqrResult result = {x,     istop, itn,    r1norm, r2norm,
+                       anorm, acond, arnorm, xnorm};
 
   return result;
 }
 
-// std::vector<LsqrResult> lsqr_batch(const std::vector<LinearOperator> &As, const std::vector<Vector> &bs,
-//             const double damp, const double atol, const double btol, const double conlim, int iter_lim, int num_threads) {
+// std::vector<LsqrResult> lsqr_batch(const std::vector<LinearOperator> &As,
+// const std::vector<Vector> &bs,
+//             const double damp, const double atol, const double btol, const
+//             double conlim, int iter_lim, int num_threads) {
 //   const int num_threads_allowed = std::thread::hardware_concurrency();
 
 //   if (num_threads == -1 || num_threads > num_threads_allowed) {
@@ -254,7 +256,8 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
 //     Vector b = bs[i];
 //     LsqrResult result;
 //     results.push_back(result);
-//     std::function<void()> func = [&A, &b, damp, atol, btol, conlim, iter_lim, &result]() {
+//     std::function<void()> func = [&A, &b, damp, atol, btol, conlim, iter_lim,
+//     &result]() {
 //       result = lsqr(A, b, damp, atol, btol, conlim, iter_lim);
 //     };
 //     std::thread()
@@ -262,7 +265,7 @@ LsqrResult lsqr(const LinearOperator& A, const Vector& b, const double damp, con
 //   }
 // }
 
-void print_result(const LsqrResult& result) {
+void print_result(const LsqrResult &result) {
   std::cout << "istop: " << result.istop << std::endl;
   std::cout << "itn: " << result.itn << std::endl;
   std::cout << "r1norm: " << result.r1norm << std::endl;

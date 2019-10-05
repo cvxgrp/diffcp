@@ -1,16 +1,16 @@
 #include "linop.h"
-#include <iostream>
 #include <assert.h>
 
 LinearOperator LinearOperator::operator+(const LinearOperator &obj) {
   assert(m == obj.m);
   assert(n == obj.n);
 
-  const VecFn result_matvec = [this, obj](const Vector &x) -> Vector {
-    return matvec(x) + obj.matvec(x);
+  const LinearOperator this_op = *this;
+  const VecFn result_matvec = [this_op, obj](const Vector &x) -> Vector {
+    return this_op.matvec(x) + obj.matvec(x);
   };
-  const VecFn result_rmatvec = [this, obj](const Vector &x) -> Vector {
-    return rmatvec(x) + obj.matvec(x);
+  const VecFn result_rmatvec = [this_op, obj](const Vector &x) -> Vector {
+    return this_op.rmatvec(x) + obj.rmatvec(x);
   };
   return LinearOperator(m, n, result_matvec, result_rmatvec);
 }
@@ -19,11 +19,12 @@ LinearOperator LinearOperator::operator-(const LinearOperator &obj) {
   assert(m == obj.m);
   assert(n == obj.n);
 
-  const VecFn result_matvec = [this, obj](const Vector &x) -> Vector {
-    return matvec(x) + obj.matvec(-x);
+  const LinearOperator this_op = *this;
+  const VecFn result_matvec = [this_op, obj](const Vector &x) -> Vector {
+    return this_op.matvec(x) + obj.matvec(-x);
   };
-  const VecFn result_rmatvec = [this, obj](const Vector &x) -> Vector {
-    return rmatvec(x) + obj.rmatvec(-x);
+  const VecFn result_rmatvec = [this_op, obj](const Vector &x) -> Vector {
+    return this_op.rmatvec(x) + obj.rmatvec(-x);
   };
   return LinearOperator(m, n, result_matvec, result_rmatvec);
 }
@@ -31,11 +32,12 @@ LinearOperator LinearOperator::operator-(const LinearOperator &obj) {
 LinearOperator LinearOperator::operator*(const LinearOperator &obj) {
   assert(n == obj.m);
 
-  const VecFn result_matvec = [this, obj](const Vector &x) -> Vector {
-    return matvec(obj.matvec(x));
+  const LinearOperator this_op = *this;
+  const VecFn result_matvec = [this_op, obj](const Vector &x) -> Vector {
+    return this_op.matvec(obj.matvec(x));
   };
-  const VecFn result_rmatvec = [this, obj](const Vector &x) -> Vector {
-    return obj.rmatvec(rmatvec(x));
+  const VecFn result_rmatvec = [this_op, obj](const Vector &x) -> Vector {
+    return obj.rmatvec(this_op.rmatvec(x));
   };
   return LinearOperator(m, obj.n, result_matvec, result_rmatvec);
 }
