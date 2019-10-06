@@ -173,3 +173,29 @@ def dpi_explicit(x, cones, dual=False):
                 _dproj_explicit(x[offset:offset + dim], cone, dual=dual))
             offset += dim
     return sparse.block_diag(dprojections)
+
+
+def pi(x, cones, dual=False):
+    """Projects x onto product of cones (or their duals)
+    Args:
+        x: NumPy array (with PSD data formatted in SCS convention)
+        cones: list of (cone name, size)
+        dual: whether to project onto the dual cone
+    Returns:
+        NumPy array that is the projection of `x` onto the (dual) cones
+    """
+    projection = np.zeros(x.shape)
+    offset = 0
+    for cone, sz in cones:
+        sz = sz if isinstance(sz, (tuple, list)) else (sz,)
+        if sum(sz) == 0:
+            continue
+        for dim in sz:
+            if cone == PSD:
+                dim = vec_psd_dim(dim)
+            elif cone == EXP:
+                dim *= 3
+            projection[offset:offset + dim] = _proj(
+                x[offset:offset + dim], cone, dual=dual)
+            offset += dim
+    return projection
