@@ -20,19 +20,6 @@ def pi(z, cones):
         [u, cone_lib.pi(v, cones, dual=True), np.maximum(w, 0)])
 
 
-def dpi(z, cones):
-    """Derivative of projection onto R^n x K^* x R_+
-
-     `cones` represents a conex cone K, and K^* is its dual cone.
-    """
-    u, v, w = z
-    return cone_lib.as_block_diag_linear_operator([
-        sparse.eye(np.prod(u.shape)),
-        cone_lib.dpi(v, cones, dual=True),
-        sparse.diags(.5 * (np.sign(w) + 1))
-    ])
-
-
 def dpi_explicit(z, cones):
     """Derivative of projection onto R^n x K^* x R_+
      `cones` represents a conex cone K, and K^* is its dual cone.
@@ -62,6 +49,9 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1,
                   None if warm_starts is None else warm_starts[i], kwargs)]
     return pool.starmap(solve_and_derivative_wrapper, args)
 
+
+class SolverError(Exception):
+    pass
 
 
 def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwargs):
@@ -168,9 +158,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     if mode == "lsqr":
         D_proj_dual_cone = dprojection(
             v, cone_lib.parse_cone_dict_cpp(cones), True)
-        M = splinalg.aslinearoperator(Q - sparse.eye(N)) @ dpi(
-            z, cones) + splinalg.aslinearoperator(sparse.eye(N))
-        MT = cone_lib.transpose_linear_operator(M)
 
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
@@ -216,11 +203,18 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
                 dz = dz + solve(np.append(np.zeros(N), residual))[N:]
         elif mode == "lsqr":
             dz = _solve_derivative(Q, cones_parsed, u, v, w, rhs)
+        else:
+            raise NotImplementedError(f'Unrecognized mode: {mode}')
 
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
-        dy = D_proj_dual_cone.matvec(dv) - y * dw
-        ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
+        if mode in ['dense', 'sparse']:
+            dy = D_proj_dual_cone @ dv - y * dw
+            ds = D_proj_dual_cone @ dv - dv - s * dw
+        else:
+            dy = D_proj_dual_cone.matvec(dv) - y * dw
+            ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
+
         return -dx, -dy, -ds
 
     def adjoint_derivative(dx, dy, ds, **kwargs):
@@ -262,9 +256,9 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
                     break
                 r = r + solve(np.append(np.zeros(N), residual))[N:]
         elif mode == "lsqr":
-            r = splinalg.lsqr(MT, dz, **kwargs)[0]
-        else:
             r = _solve_adjoint_derivative(Q, cones_parsed, u, v, w, dz)
+        else:
+            raise NotImplementedError(f'Unrecognized mode: {mode}')
 
         values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
         dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)

@@ -255,7 +255,6 @@ class TestConeProgDiff(unittest.TestCase):
 
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
         for mode in ["lsqr", "dense", "sparse"]:
-
             x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
                 A, b, c, cone_dims, eps=1e-10, mode=mode)
 

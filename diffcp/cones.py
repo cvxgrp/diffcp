@@ -36,6 +36,36 @@ def parse_cone_dict(cone_dict):
     return [(cone, cone_dict[cone]) for cone in CONES if cone in cone_dict]
 
 
+def as_block_diag_linear_operator(matrices):
+    """Block diag of SciPy sparse matrices (or linear operators)."""
+    linear_operators = [splinalg.aslinearoperator(
+        op) if not isinstance(op, splinalg.LinearOperator) else op
+        for op in matrices]
+    num_operators = len(linear_operators)
+    nrows = [op.shape[0] for op in linear_operators]
+    ncols = [op.shape[1] for op in linear_operators]
+    m, n = sum(nrows), sum(ncols)
+    row_indices = np.append(0, np.cumsum(nrows))
+    col_indices = np.append(0, np.cumsum(ncols))
+
+    def matvec(x):
+        output = np.zeros(m)
+        for i, op in enumerate(linear_operators):
+            z = x[col_indices[i]:col_indices[i + 1]].ravel()
+            output[row_indices[i]:row_indices[i + 1]] = op.matvec(z)
+        return output
+
+    def rmatvec(y):
+        output = np.zeros(n)
+        for i, op in enumerate(linear_operators):
+            z = y[row_indices[i]:row_indices[i + 1]].ravel()
+            output[col_indices[i]:col_indices[i + 1]] = op.rmatvec(z)
+        return output
+
+    return splinalg.LinearOperator((m, n), matvec=matvec, rmatvec=rmatvec)
+
+
+
 def vec_psd_dim(dim):
     return int(dim * (dim + 1) / 2)
 
