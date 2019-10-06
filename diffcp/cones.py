@@ -30,41 +30,9 @@ def parse_cone_dict_cpp(cone_list):
     return [Cone(CONE_MAP[cone], [l] if not isinstance(l, (list, tuple)) else l)
             for cone, l in cone_list]
 
-
 def parse_cone_dict(cone_dict):
     """Parses SCS-style cone dictionary."""
     return [(cone, cone_dict[cone]) for cone in CONES if cone in cone_dict]
-
-
-def as_block_diag_linear_operator(matrices):
-    """Block diag of SciPy sparse matrices (or linear operators)."""
-    linear_operators = [splinalg.aslinearoperator(
-        op) if not isinstance(op, splinalg.LinearOperator) else op
-        for op in matrices]
-    num_operators = len(linear_operators)
-    nrows = [op.shape[0] for op in linear_operators]
-    ncols = [op.shape[1] for op in linear_operators]
-    m, n = sum(nrows), sum(ncols)
-    row_indices = np.append(0, np.cumsum(nrows))
-    col_indices = np.append(0, np.cumsum(ncols))
-
-    def matvec(x):
-        output = np.zeros(m)
-        for i, op in enumerate(linear_operators):
-            z = x[col_indices[i]:col_indices[i + 1]].ravel()
-            output[row_indices[i]:row_indices[i + 1]] = op.matvec(z)
-        return output
-
-    def rmatvec(y):
-        output = np.zeros(n)
-        for i, op in enumerate(linear_operators):
-            z = y[row_indices[i]:row_indices[i + 1]].ravel()
-            output[col_indices[i]:col_indices[i + 1]] = op.rmatvec(z)
-        return output
-
-    return splinalg.LinearOperator((m, n), matvec=matvec, rmatvec=rmatvec)
-
-
 
 def vec_psd_dim(dim):
     return int(dim * (dim + 1) / 2)
@@ -176,33 +144,6 @@ def _dproj_explicit(x, cone, dual=False):
         return DP @ np.eye(DP.shape[0])
     else:
         raise NotImplementedError(f"{cone} not implemented")
-
-def pi(x, cones, dual=False):
-    """Projects x onto product of cones (or their duals)
-
-    Args:
-        x: NumPy array (with PSD data formatted in SCS convention)
-        cones: list of (cone name, size)
-        dual: whether to project onto the dual cone
-
-    Returns:
-        NumPy array that is the projection of `x` onto the (dual) cones
-    """
-    projection = np.zeros(x.shape)
-    offset = 0
-    for cone, sz in cones:
-        sz = sz if isinstance(sz, (tuple, list)) else (sz,)
-        if sum(sz) == 0:
-            continue
-        for dim in sz:
-            if cone == PSD:
-                dim = vec_psd_dim(dim)
-            elif cone == EXP:
-                dim *= 3
-            projection[offset:offset + dim] = _proj(
-                x[offset:offset + dim], cone, dual=dual)
-            offset += dim
-    return projection
 
 
 def dpi_explicit(x, cones, dual=False):

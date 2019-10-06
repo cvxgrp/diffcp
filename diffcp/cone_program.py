@@ -32,6 +32,7 @@ def dpi_explicit(z, cones):
     ])
 
 
+
 def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, kwargs):
     return solve_and_derivative(
         A, b, c, cone_dict, warm_start=warm_start, **kwargs)
@@ -214,7 +215,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         else:
             dy = D_proj_dual_cone.matvec(dv) - y * dw
             ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
-
         return -dx, -dy, -ds
 
     def adjoint_derivative(dx, dy, ds, **kwargs):
