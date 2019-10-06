@@ -8,7 +8,7 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
-from _diffcp import dprojection, _solve_derivative, _solve_adjoint_derivative
+import _diffcp
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -161,13 +161,14 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         # M = dprojection_dense(v, cone_lib.parse_cone_dict_cpp(cones), True)
         # MT = MT.T
     if mode == "lsqr":
-        D_proj_dual_cone = dprojection(
+        D_proj_dual_cone = _diffcp.dprojection(
             v, cone_lib.parse_cone_dict_cpp(cones), True)
-
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
 
     cones_parsed = cone_lib.parse_cone_dict_cpp(cones)
+    M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
+    MT = M.transpose();
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
@@ -209,9 +210,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
                     break
                 dz = dz + solve(np.append(np.zeros(N), residual))[N:]
         elif mode == "lsqr":
-            dz = _solve_derivative(Q, cones_parsed, u, v, w, rhs)
-        else:
-            raise NotImplementedError(f'Unrecognized mode: {mode}')
+            dz = _diffcp.lsqr(M, rhs).solution
 
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
@@ -264,7 +263,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
                     break
                 r = r + solve(np.append(np.zeros(N), residual))[N:]
         elif mode == "lsqr":
-            r = _solve_adjoint_derivative(Q, cones_parsed, u, v, w, dz)
+            r = _diffcp.lsqr(MT, dz).solution
         else:
             raise NotImplementedError(f'Unrecognized mode: {mode}')
 

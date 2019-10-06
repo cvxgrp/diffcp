@@ -20,28 +20,11 @@ LinearOperator dpi(const Vector &u, const Vector &v, double w,
   return block_diag(linops);
 }
 
-Vector _solve_derivative(const SparseMatrix &Q, const std::vector<Cone> &cones,
-                         const Vector &u, const Vector &v, double w,
-                         const Vector &rhs) {
+LinearOperator M_operator(const SparseMatrix &Q, const std::vector<Cone> &cones,
+                          const Vector &u, const Vector &v, double w) {
   int N = u.size() + v.size() + 1;
-
-  LinearOperator M =
-      (aslinearoperator(Q) - identity(N)) * dpi(u, v, w, cones) + identity(N);
-  LsqrResult result = lsqr(M, rhs);
-  return result.x;
-}
-
-Vector _solve_adjoint_derivative(const SparseMatrix &Q,
-                                 const std::vector<Cone> &cones,
-                                 const Vector &u, const Vector &v, double w,
-                                 const Vector &dz) {
-  int N = u.size() + v.size() + 1;
-
-  LinearOperator MT = dpi(u, v, w, cones).transpose() *
-                          (aslinearoperator(Q).transpose() - identity(N)) +
-                      identity(N);
-  LsqrResult result = lsqr(MT, dz);
-  return result.x;
+  return (aslinearoperator(Q) - identity(N)) * dpi(u, v, w, cones) +
+         identity(N);
 }
 
 SparseMatrix M_sparse(const SparseMatrix& Q, const std::vector<Cone>& cones,

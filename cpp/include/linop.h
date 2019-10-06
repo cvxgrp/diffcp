@@ -19,13 +19,15 @@ public:
   explicit LinearOperator(int rows, int cols, const VecFn &matvec_in,
                           const VecFn &rmatvec_in)
       : m(rows), n(cols), matvec(matvec_in), rmatvec(rmatvec_in){};
-  LinearOperator operator+(const LinearOperator &obj);
-  LinearOperator operator-(const LinearOperator &obj);
-  LinearOperator operator*(const LinearOperator &obj);
-  LinearOperator transpose() { return LinearOperator(n, m, rmatvec, matvec); }
+  LinearOperator operator+(const LinearOperator &obj) const;
+  LinearOperator operator-(const LinearOperator &obj) const;
+  LinearOperator operator*(const LinearOperator &obj) const;
+  LinearOperator transpose() const {
+    return LinearOperator(n, m, rmatvec, matvec);
+  }
 
-  Vector apply_matvec(const Vector &x) { return matvec(x); }
-  Vector apply_rmatvec(const Vector &x) { return rmatvec(x); }
+  Vector apply_matvec(const Vector &x) const { return matvec(x); }
+  Vector apply_rmatvec(const Vector &x) const { return rmatvec(x); }
 };
 
 LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators);

@@ -14,7 +14,8 @@ PYBIND11_MODULE(_diffcp, m) {
 
   py::class_<LinearOperator>(m, "LinearOperator")
       .def("matvec", &LinearOperator::apply_matvec)
-      .def("rmatvec", &LinearOperator::apply_rmatvec);
+      .def("rmatvec", &LinearOperator::apply_rmatvec)
+      .def("transpose", &LinearOperator::transpose);
   py::class_<Cone>(m, "Cone")
       .def(py::init<ConeType, const std::vector<int> &>())
       .def_readonly("type", &Cone::type)
@@ -25,14 +26,22 @@ PYBIND11_MODULE(_diffcp, m) {
       .value("SOC", ConeType::SOC)
       .value("PSD", ConeType::PSD)
       .value("EXP", ConeType::EXP);
+  m.def("M_operator", &M_operator);
+  py::class_<LsqrResult>(m, "LsqrResult")
+      .def_readonly("solution", &LsqrResult::x);
+  m.def("lsqr", &lsqr, "Computes least-squares solution via LSQR", py::arg("A"),
+        py::arg("rhs"), py::arg("damp") = 0.0, py::arg("atol") = 1e-8,
+        py::arg("btol") = 1e-8, py::arg("conlim") = 1e8,
+        py::arg("iter_lim") = -1);
+
+  // TODO: Add def here too
   m.def("M_dense", &M_dense);
   m.def("M_sparse", &M_sparse);
-  m.def("_solve_derivative", &_solve_derivative);
-  m.def("_solve_adjoint_derivative", &_solve_adjoint_derivative);
   m.def("_solve_derivative_dense", &_solve_derivative_dense);
   m.def("_solve_adjoint_derivative_dense", &_solve_adjoint_derivative_dense);
   m.def("_solve_derivative_sparse", &_solve_derivative_sparse);
   m.def("_solve_adjoint_derivative_sparse", &_solve_adjoint_derivative_sparse);
+
   m.def("dprojection", &dprojection);
   m.def("dprojection_dense", &dprojection_dense);
   m.def("dprojection_sparse", &dprojection_sparse);
