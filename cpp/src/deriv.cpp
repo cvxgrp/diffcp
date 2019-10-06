@@ -43,3 +43,46 @@ Vector _solve_adjoint_derivative(const SparseMatrix &Q,
   LsqrResult result = lsqr(MT, dz);
   return result.x;
 }
+
+SparseMatrix M_sparse(const SparseMatrix& Q, const std::vector<Cone>& cones,
+                      const Vector& u, const Vector& v, double w) {
+  int n = 1;
+  SparseMatrix D(n,n);
+  return D;
+}
+
+Vector _solve_derivative_sparse(const SparseMatrix& M, const Vector& rhs) {
+  // TODO: Fill in
+  int n = 1;
+  Vector x = Vector::Zero(n);
+  return x;
+}
+
+Vector _solve_adjoint_derivative_sparse(const SparseMatrix& MT, const Vector& dz) {
+  // TODO: Fill in
+  int n = 1;
+  Vector x = Vector::Zero(n);
+  return x;
+}
+
+Matrix M_dense(const Matrix& Q, const std::vector<Cone>& cones,
+               const Vector& u, const Vector& v, double w) {
+  // TODO: Fill in
+  int n = 1;
+  Matrix D = Matrix::Zero(n, n);
+  return D;
+}
+
+Vector _solve_derivative_dense(const Matrix& M, const Vector& rhs) {
+  // TODO: Fill in
+  int n = 1;
+  Vector x = Vector::Zero(n);
+  return x;
+}
+
+Vector _solve_adjoint_derivative_dense(const Matrix& MT, const Vector& dz) {
+  // TODO: Fill in
+  int n = 1;
+  Vector x = Vector::Zero(n);
+  return x;
+}

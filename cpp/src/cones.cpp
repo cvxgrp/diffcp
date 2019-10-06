@@ -354,3 +354,19 @@ LinearOperator dprojection(const Vector &x, const std::vector<Cone> &cones,
   }
   return block_diag(lin_ops);
 }
+
+Matrix dprojection_dense(const Vector &x, const std::vector<Cone> &cones,
+                         bool dual) {
+  // TODO: Fill in
+  int n = 1;
+  Matrix D = Matrix::Zero(n, n);
+  return D;
+}
+
+SparseMatrix dprojection_sparse(const Vector &x, const std::vector<Cone> &cones,
+                                bool dual) {
+  // TODO: Fill in
+  int n = 1;
+  SparseMatrix D(n,n);
+  return D;
+}

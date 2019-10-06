@@ -156,6 +156,9 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         except NotImplementedError:
             print("PSD cone not supported; switching to mode=lsqr.")
             mode = "lsqr"
+
+        # TODO: for C++ dense, do something like:
+        # M = dprojection_dense(v, cone_lib.parse_cone_dict_cpp(cones), True)
     if mode == "lsqr":
         D_proj_dual_cone = dprojection(
             v, cone_lib.parse_cone_dict_cpp(cones), True)
@@ -186,6 +189,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             dz = np.zeros(rhs.size)
         elif mode == "dense":
             dz = np.linalg.lstsq(M.todense(), rhs, rcond=None)[0]
+            # TODO: for C++ dense, do something like:
+            # dz = _solve_derivative_dense(M, rhs)
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
             it_ref_iters = kwargs.get("it_ref_iters", 10)
@@ -239,6 +244,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             r = np.zeros(dz.shape)
         elif mode == "dense":
             r = np.linalg.lstsq(MT.todense(), dz, rcond=None)[0]
+            # TODO: for C++ dense, do something like:
+            # dz = _solve_adjoint_derivative_dense(M, rhs)
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
             it_ref_iters = kwargs.get("it_ref_iters", 5)

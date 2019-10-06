@@ -25,9 +25,17 @@ PYBIND11_MODULE(_diffcp, m) {
       .value("SOC", ConeType::SOC)
       .value("PSD", ConeType::PSD)
       .value("EXP", ConeType::EXP);
+  m.def("M_dense", &M_dense);
+  m.def("M_sparse", &M_sparse);
   m.def("_solve_derivative", &_solve_derivative);
   m.def("_solve_adjoint_derivative", &_solve_adjoint_derivative);
+  m.def("_solve_derivative_dense", &_solve_derivative_dense);
+  m.def("_solve_adjoint_derivative_dense", &_solve_adjoint_derivative_dense);
+  m.def("_solve_derivative_sparse", &_solve_derivative_sparse);
+  m.def("_solve_adjoint_derivative_sparse", &_solve_adjoint_derivative_sparse);
   m.def("dprojection", &dprojection);
+  m.def("dprojection_dense", &dprojection_dense);
+  m.def("dprojection_sparse", &dprojection_sparse);
   m.def("project_exp_cone", &project_exp_cone);
   m.def("in_exp", &in_exp);
   m.def("in_exp_dual", &in_exp_dual);
