@@ -159,6 +159,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
 
         # TODO: for C++ dense, do something like:
         # M = dprojection_dense(v, cone_lib.parse_cone_dict_cpp(cones), True)
+        # MT = MT.T
     if mode == "lsqr":
         D_proj_dual_cone = dprojection(
             v, cone_lib.parse_cone_dict_cpp(cones), True)
@@ -245,7 +246,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         elif mode == "dense":
             r = np.linalg.lstsq(MT.todense(), dz, rcond=None)[0]
             # TODO: for C++ dense, do something like:
-            # dz = _solve_adjoint_derivative_dense(M, rhs)
+            # dz = _solve_adjoint_derivative_dense(MT, rhs)
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
             it_ref_iters = kwargs.get("it_ref_iters", 5)
