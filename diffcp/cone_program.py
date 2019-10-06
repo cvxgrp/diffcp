@@ -139,6 +139,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     m, n = A.shape
     N = m + n + 1
     cones = cone_lib.parse_cone_dict(cone_dict)
+    cones_parsed = cone_lib.parse_cone_dict_cpp(cones)
     z = (x, y - s, np.array([1]))
     u, v, w = z
 
@@ -163,12 +164,11 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     if mode == "lsqr":
         D_proj_dual_cone = _diffcp.dprojection(
             v, cone_lib.parse_cone_dict_cpp(cones), True)
+        M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
+        MT = M.transpose()
+
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
-
-    cones_parsed = cone_lib.parse_cone_dict_cpp(cones)
-    M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
-    MT = M.transpose();
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
