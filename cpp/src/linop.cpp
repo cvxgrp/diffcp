@@ -1,7 +1,7 @@
 #include "linop.h"
 #include <assert.h>
 
-LinearOperator LinearOperator::operator+(const LinearOperator &obj) {
+LinearOperator LinearOperator::operator+(const LinearOperator &obj) const {
   assert(m == obj.m);
   assert(n == obj.n);
 
@@ -15,7 +15,7 @@ LinearOperator LinearOperator::operator+(const LinearOperator &obj) {
   return LinearOperator(m, n, result_matvec, result_rmatvec);
 }
 
-LinearOperator LinearOperator::operator-(const LinearOperator &obj) {
+LinearOperator LinearOperator::operator-(const LinearOperator &obj) const {
   assert(m == obj.m);
   assert(n == obj.n);
 
@@ -29,7 +29,7 @@ LinearOperator LinearOperator::operator-(const LinearOperator &obj) {
   return LinearOperator(m, n, result_matvec, result_rmatvec);
 }
 
-LinearOperator LinearOperator::operator*(const LinearOperator &obj) {
+LinearOperator LinearOperator::operator*(const LinearOperator &obj) const {
   assert(n == obj.m);
 
   const LinearOperator this_op = *this;
@@ -53,8 +53,8 @@ LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators) {
     cols += linop.n;
   }
 
-  const VecFn result_matvec = [linear_operators,
-                               rows, cols](const Vector &x) -> Vector {
+  const VecFn result_matvec = [linear_operators, rows,
+                               cols](const Vector &x) -> Vector {
     assert(x.size() == cols);
     Vector out = Vector::Zero(rows);
     int i = 0;
@@ -66,8 +66,8 @@ LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators) {
     }
     return out;
   };
-  const VecFn result_rmatvec = [linear_operators,
-                                rows, cols](const Vector &x) -> Vector {
+  const VecFn result_rmatvec = [linear_operators, rows,
+                                cols](const Vector &x) -> Vector {
     assert(x.size() == rows);
     Vector out = Vector::Zero(cols);
     int i = 0;
@@ -83,7 +83,7 @@ LinearOperator block_diag(const std::vector<LinearOperator> &linear_operators) {
   return LinearOperator(rows, cols, result_matvec, result_rmatvec);
 }
 
-LinearOperator aslinearoperator(const Matrix& A) {
+LinearOperator aslinearoperator(const Matrix &A) {
   const VecFn result_matvec = [A](const Vector &x) -> Vector { return A * x; };
   const VecFn result_rmatvec = [A](const Vector &x) -> Vector {
     return A.transpose() * x;
@@ -91,9 +91,11 @@ LinearOperator aslinearoperator(const Matrix& A) {
   return LinearOperator(A.rows(), A.cols(), result_matvec, result_rmatvec);
 }
 
-LinearOperator aslinearoperator(const SparseMatrix& A) {
-  const VecFn result_matvec = [A](const Vector &x) -> Vector { return A*x; };
-  const VecFn result_rmatvec = [A](const Vector &x) -> Vector { return A.transpose()*x; };
+LinearOperator aslinearoperator(const SparseMatrix &A) {
+  const VecFn result_matvec = [A](const Vector &x) -> Vector { return A * x; };
+  const VecFn result_rmatvec = [A](const Vector &x) -> Vector {
+    return A.transpose() * x;
+  };
   return LinearOperator(A.rows(), A.cols(), result_matvec, result_rmatvec);
 }
 

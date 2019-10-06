@@ -8,7 +8,7 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
-from _diffcp import dprojection, _solve_derivative, _solve_adjoint_derivative
+import _diffcp
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -138,12 +138,14 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         [-A, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
-    D_proj_dual_cone = dprojection(
+    D_proj_dual_cone = _diffcp.dprojection(
         v, cone_lib.parse_cone_dict_cpp(cones), True)
     pi_z = pi(z, cones)
     rows, cols = A.nonzero()
 
     cones_parsed = cone_lib.parse_cone_dict_cpp(cones)
+    M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
+    MT = M.transpose();
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
@@ -168,7 +170,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         if np.allclose(rhs, 0):
             dz = np.zeros(rhs.size)
         else:
-            dz = _solve_derivative(Q, cones_parsed, u, v, w, rhs)
+            dz = _diffcp.lsqr(M, rhs).solution
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
         dy = D_proj_dual_cone.matvec(dv) - y * dw
@@ -193,7 +195,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
         if np.allclose(dz, 0):
             r = np.zeros(dz.shape)
         else:
-            r = _solve_adjoint_derivative(Q, cones_parsed, u, v, w, dz)
+            r = _diffcp.lsqr(MT, dz).solution
 
         # dQ is the outer product of pi_z and r. Instead of materializing this,
         # the code below only computes the entries needed to compute dA, db, dc
