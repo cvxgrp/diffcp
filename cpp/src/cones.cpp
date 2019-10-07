@@ -355,7 +355,7 @@ LinearOperator dprojection(const Vector &x, const std::vector<Cone> &cones,
   return block_diag(lin_ops);
 }
 
-void _op_into_dense(MatrixRef &D_block, LinearOperator D_op) {
+void _op_into_dense(MatrixRef &D_block, const LinearOperator &D_op) {
   int size = D_block.rows();
   Vector v = Vector::Zero(size);
   for (int i = 0; i < size; ++i) {
