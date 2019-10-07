@@ -159,12 +159,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         M = M.todense()
         MT = M.T
     elif mode == "sparse":
-        try:
-            M = (Q - sparse.eye(N)) @ dpi_explicit(z, cones) + sparse.eye(N)
-            MT = M.T
-        except NotImplementedError:
-            print("PSD cone not supported; switching to mode=lsqr.")
-            mode = "lsqr"
+        M = (Q - sparse.eye(N)) @ dpi_explicit(z, cones) + sparse.eye(N)
+        MT = M.T
 
     if mode == "lsqr":
         M = _diffcp.M_operator(Q, cones_parsed, u, v, w)

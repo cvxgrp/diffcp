@@ -139,7 +139,9 @@ def _dproj_explicit(x, cone, dual=False):
                 [z[:, np.newaxis], t_plus_norm_z *
                     np.eye(z.size) - t * np.outer(unit_z, unit_z)]
             ])
-    elif cone == EXP:
+    elif cone in [EXP, PSD]:
+        # TODO: Performance can be improved for the PSD cone
+        # with a manual implementation
         DP = _dproj(x, cone, dual=dual)
         return DP @ np.eye(DP.shape[0])
     else:
