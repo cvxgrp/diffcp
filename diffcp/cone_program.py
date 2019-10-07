@@ -193,7 +193,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         if np.allclose(rhs, 0):
             dz = np.zeros(rhs.size)
         elif mode == "dense":
-            dz = _diffcp._solve_derivative_dense(M, rhs)
+            dz = _diffcp._solve_derivative_dense(M, MT, rhs)
         elif mode == "dense_np":
             dz = np.linalg.lstsq(M, rhs, rcond=None)[0]
         elif mode == "sparse":
@@ -238,7 +238,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         if np.allclose(dz, 0):
             r = np.zeros(dz.shape)
         elif mode == "dense":
-            r = _diffcp._solve_adjoint_derivative_dense(MT, dz)
+            r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
         elif mode == "dense_np":
             r = np.linalg.lstsq(MT, dz, rcond=None)[0]
         elif mode == "sparse":

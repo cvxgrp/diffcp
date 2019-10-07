@@ -35,9 +35,7 @@ Matrix dpi_dense(const Vector &u, const Vector &v, double w,
   int m = v.size();
   int N = n + m + 1;
   Matrix D = Matrix::Zero(N, N);
-  SparseMatrix eye(n, n);
-  eye.setIdentity();
-  D.block(0, 0, n, n) = eye;
+  D.block(0, 0, n, n).diagonal().array() += 1.;
   // Could be optimized by having dprojection_dense modifying this in-place,
   // or by not explicitly adding the first and last blocks.
   D.block(n, n, N-n-1, N-n-1) = dprojection_dense(v, cones, true);
@@ -51,19 +49,18 @@ Matrix M_dense(const Matrix& Q, const std::vector<Cone>& cones,
   int n = u.size();
   int m = v.size();
   int N = n + m + 1;
-  SparseMatrix eye(N, N);
-  eye.setIdentity();
+  Matrix eye = Matrix::Identity(N, N);
   return (Q - eye) * dpi_dense(u, v, w, cones) + eye;
 }
 
-Vector _solve_derivative_dense(const Matrix& M, const Vector& rhs) {
-  // TODO: Try other approaches too
-  // TODO: QR could be cached to optimize multiple calls
-  return M.colPivHouseholderQr().solve(rhs);
+Vector _solve_derivative_dense(const Matrix& M, const Matrix& MT,
+                               const Vector& rhs) {
+  // TODO: Factorization could be cached to optimize multiple calls
+  return (MT*M).ldlt().solve(MT*rhs);
 }
 
-Vector _solve_adjoint_derivative_dense(const Matrix& MT, const Vector& dz) {
-  // TODO: Try other approaches too
-  // TODO: QR could be cached to optimize multiple calls
-  return MT.colPivHouseholderQr().solve(dz);
+Vector _solve_adjoint_derivative_dense(const Matrix& M, const Matrix& MT,
+                                       const Vector& dz) {
+  // TODO: Factorization could be cached to optimize multiple calls
+  return (M*MT).ldlt().solve(M*dz);
 }

@@ -361,7 +361,6 @@ void _op_into_dense(MatrixRef &D_block, LinearOperator D_op) {
   for (int i = 0; i < size; ++i) {
     v[i] = 1.;
     D_block.row(i) = D_op.matvec(v);
-    // D_block.col(i) = D_op.matvec(v);
     v[i] = 0.;
   }
 }
