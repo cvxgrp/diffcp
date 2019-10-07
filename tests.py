@@ -283,7 +283,9 @@ class TestConeProgDiff(unittest.TestCase):
                 A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10)
             objective_pert = c.T @ x_pert
 
-            np.testing.assert_allclose(objective_pert - objective, 1e-6 * dA.multiply(dA).sum() + 1e-6 * db@db + 1e-6 * dc@dc, atol=1e-8)
+            np.testing.assert_allclose(
+                objective_pert - objective,
+                1e-6 * dA.multiply(dA).sum() + 1e-6 * db@db + 1e-6 * dc@dc, atol=1e-8)
 
     def test_warm_start(self):
         m = 20
