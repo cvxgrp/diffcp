@@ -355,18 +355,85 @@ LinearOperator dprojection(const Vector &x, const std::vector<Cone> &cones,
   return block_diag(lin_ops);
 }
 
-Matrix dprojection_dense(const Vector &x, const std::vector<Cone> &cones,
-                         bool dual) {
-  // TODO: Fill in
-  int n = 1;
-  Matrix D = Matrix::Zero(n, n);
-  return D;
+void _op_into_dense(MatrixRef &D_block, LinearOperator D_op) {
+  int size = D_block.rows();
+  Vector v = Vector::Zero(size);
+  for (int i = 0; i < size; ++i) {
+    v[i] = 1.;
+    D_block.row(i) = D_op.matvec(v);
+    // D_block.col(i) = D_op.matvec(v);
+    v[i] = 0.;
+  }
 }
 
-SparseMatrix dprojection_sparse(const Vector &x, const std::vector<Cone> &cones,
-                                bool dual) {
-  // TODO: Fill in
-  int n = 1;
-  SparseMatrix D(n,n);
+int _get_D_size(const std::vector<Cone> &cones) {
+  int offset = 0;
+  for (const Cone &cone : cones) {
+    const ConeType &type = cone.type;
+    const std::vector<int> &sizes = cone.sizes;
+    if (std::accumulate(sizes.begin(), sizes.end(), 0) == 0) {
+      continue;
+    }
+    for (int size : sizes) {
+      if (type == PSD) {
+        size = vectorized_psd_size(size);
+      } else if (type == EXP) {
+        size *= 3;
+      }
+      offset += size;
+    }
+  }
+  return offset;
+}
+
+void _dprojection_pos_dense(MatrixRef &D_block, const Vector &x) {
+  const Array sign = x.cwiseSign();
+  D_block.diagonal() << (0.5 * (sign + 1));
+}
+
+void _dprojection_zero_dense(MatrixRef &D_block, const Vector &x, bool dual) {
+  if (dual) {
+    D_block.diagonal().setOnes();
+  }
+}
+
+void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type, bool dual) {
+  if (type == ZERO) {
+    _dprojection_zero_dense(D_block, x, dual);
+  } else if (type == POS) {
+    _dprojection_pos_dense(D_block, x);
+  } else if (type == SOC) {
+    _op_into_dense(D_block, _dprojection_soc(x));
+  } else if (type == PSD) {
+    _op_into_dense(D_block, _dprojection_psd(x));
+  } else {
+    assert(type == EXP);
+    _op_into_dense(D_block, _dprojection_exp(x, dual));
+  }
+}
+
+Matrix dprojection_dense(const Vector &x, const std::vector<Cone> &cones,
+                         bool dual) {
+  int D_size = _get_D_size(cones);
+  Matrix D = Matrix::Zero(D_size, D_size);
+
+  int offset = 0;
+  for (const Cone &cone : cones) {
+    const ConeType &type = cone.type;
+    const std::vector<int> &sizes = cone.sizes;
+    if (std::accumulate(sizes.begin(), sizes.end(), 0) == 0) {
+      continue;
+    }
+    for (int size : sizes) {
+      if (type == PSD) {
+        size = vectorized_psd_size(size);
+      } else if (type == EXP) {
+        size *= 3;
+      }
+      MatrixRef D_block = D.block(offset, offset, size, size);
+      _dprojection_dense(D_block, x.segment(offset, size), type, dual);
+      offset += size;
+    }
+  }
   return D;
 }

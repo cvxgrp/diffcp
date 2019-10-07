@@ -108,7 +108,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     Raises:
         SolverError: if the cone program is infeasible or unbounded.
     """
-    if mode not in ["dense", "sparse", "lsqr"]:
+    if mode not in ["dense", "dense_np", "sparse", "lsqr"]:
         return NotImplementedError
 
     data = {
@@ -148,9 +148,17 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         [-A, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
+    Q_dense = Q.todense()
 
-    if mode == "dense" or mode == "sparse":
-        D_proj_dual_cone = cone_lib.dpi_explicit(v, cones, dual=True)
+    D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
+    if mode == "dense":
+        M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
+        MT = M.T
+    elif mode == "dense_np":
+        M = (Q - sparse.eye(N)) @ dpi_explicit(z, cones) + sparse.eye(N)
+        M = M.todense()
+        MT = M.T
+    elif mode == "sparse":
         try:
             M = (Q - sparse.eye(N)) @ dpi_explicit(z, cones) + sparse.eye(N)
             MT = M.T
@@ -158,12 +166,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             print("PSD cone not supported; switching to mode=lsqr.")
             mode = "lsqr"
 
-        # TODO: for C++ dense, do something like:
-        # M = dprojection_dense(v, cone_lib.parse_cone_dict_cpp(cones), True)
-        # MT = MT.T
     if mode == "lsqr":
-        D_proj_dual_cone = _diffcp.dprojection(
-            v, cone_lib.parse_cone_dict_cpp(cones), True)
         M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
         MT = M.transpose()
 
@@ -190,9 +193,9 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         if np.allclose(rhs, 0):
             dz = np.zeros(rhs.size)
         elif mode == "dense":
-            dz = np.linalg.lstsq(M.todense(), rhs, rcond=None)[0]
-            # TODO: for C++ dense, do something like:
-            # dz = _solve_derivative_dense(M, rhs)
+            dz = _diffcp._solve_derivative_dense(M, rhs)
+        elif mode == "dense_np":
+            dz = np.linalg.lstsq(M, rhs, rcond=None)[0]
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
             it_ref_iters = kwargs.get("it_ref_iters", 10)
@@ -214,12 +217,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
 
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
-        if mode in ['dense', 'sparse']:
-            dy = D_proj_dual_cone @ dv - y * dw
-            ds = D_proj_dual_cone @ dv - dv - s * dw
-        else:
-            dy = D_proj_dual_cone.matvec(dv) - y * dw
-            ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
+        dy = D_proj_dual_cone.matvec(dv) - y * dw
+        ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
         return -dx, -dy, -ds
 
     def adjoint_derivative(dx, dy, ds, **kwargs):
@@ -233,19 +232,15 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             perturbations; the sparsity pattern of `dA` matches that of `A`.
         """
         dw = -(x @ dx + y @ dy + s @ ds)
-        if mode == "dense" or mode == "sparse":
-            dz = np.concatenate(
-                [dx, D_proj_dual_cone.T @ (dy + ds) - ds, np.array([dw])])
-        else:
-            dz = np.concatenate(
-                [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
+        dz = np.concatenate(
+            [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
 
         if np.allclose(dz, 0):
             r = np.zeros(dz.shape)
         elif mode == "dense":
-            r = np.linalg.lstsq(MT.todense(), dz, rcond=None)[0]
-            # TODO: for C++ dense, do something like:
-            # dz = _solve_adjoint_derivative_dense(MT, rhs)
+            r = _diffcp._solve_adjoint_derivative_dense(MT, dz)
+        elif mode == "dense_np":
+            r = np.linalg.lstsq(MT, dz, rcond=None)[0]
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
             it_ref_iters = kwargs.get("it_ref_iters", 5)

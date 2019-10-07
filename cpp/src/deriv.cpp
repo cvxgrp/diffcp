@@ -1,6 +1,8 @@
 #include "deriv.h"
 #include "lsqr.h"
 
+#include <iostream> // TODO
+
 inline double gt(double x, double t) {
   if (x >= t) {
     return 1.0;
@@ -27,45 +29,41 @@ LinearOperator M_operator(const SparseMatrix &Q, const std::vector<Cone> &cones,
          identity(N);
 }
 
-SparseMatrix M_sparse(const SparseMatrix& Q, const std::vector<Cone>& cones,
-                      const Vector& u, const Vector& v, double w) {
-  int n = 1;
-  SparseMatrix D(n,n);
+Matrix dpi_dense(const Vector &u, const Vector &v, double w,
+                         const std::vector<Cone> &cones) {
+  int n = u.size();
+  int m = v.size();
+  int N = n + m + 1;
+  Matrix D = Matrix::Zero(N, N);
+  SparseMatrix eye(n, n);
+  eye.setIdentity();
+  D.block(0, 0, n, n) = eye;
+  // Could be optimized by having dprojection_dense modifying this in-place,
+  // or by not explicitly adding the first and last blocks.
+  D.block(n, n, N-n-1, N-n-1) = dprojection_dense(v, cones, true);
+  D(N-1,N-1) = gt(w, 0.0);
   return D;
 }
 
-Vector _solve_derivative_sparse(const SparseMatrix& M, const Vector& rhs) {
-  // TODO: Fill in
-  int n = 1;
-  Vector x = Vector::Zero(n);
-  return x;
-}
-
-Vector _solve_adjoint_derivative_sparse(const SparseMatrix& MT, const Vector& dz) {
-  // TODO: Fill in
-  int n = 1;
-  Vector x = Vector::Zero(n);
-  return x;
-}
 
 Matrix M_dense(const Matrix& Q, const std::vector<Cone>& cones,
                const Vector& u, const Vector& v, double w) {
-  // TODO: Fill in
-  int n = 1;
-  Matrix D = Matrix::Zero(n, n);
-  return D;
+  int n = u.size();
+  int m = v.size();
+  int N = n + m + 1;
+  SparseMatrix eye(N, N);
+  eye.setIdentity();
+  return (Q - eye) * dpi_dense(u, v, w, cones) + eye;
 }
 
 Vector _solve_derivative_dense(const Matrix& M, const Vector& rhs) {
-  // TODO: Fill in
-  int n = 1;
-  Vector x = Vector::Zero(n);
-  return x;
+  // TODO: Try other approaches too
+  // TODO: QR could be cached to optimize multiple calls
+  return M.colPivHouseholderQr().solve(rhs);
 }
 
 Vector _solve_adjoint_derivative_dense(const Matrix& MT, const Vector& dz) {
-  // TODO: Fill in
-  int n = 1;
-  Vector x = Vector::Zero(n);
-  return x;
+  // TODO: Try other approaches too
+  // TODO: QR could be cached to optimize multiple calls
+  return MT.colPivHouseholderQr().solve(dz);
 }
