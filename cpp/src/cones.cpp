@@ -396,7 +396,8 @@ void _dprojection_zero_dense(MatrixRef &D_block, const Vector &x, bool dual) {
   }
 }
 
-void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type, bool dual) {
+void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type,
+                        bool dual) {
   if (type == ZERO) {
     _dprojection_zero_dense(D_block, x, dual);
   } else if (type == POS) {
