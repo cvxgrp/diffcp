@@ -1,8 +1,6 @@
 #include "deriv.h"
 #include "lsqr.h"
 
-#include <iostream> // TODO
-
 inline double gt(double x, double t) {
   if (x >= t) {
     return 1.0;
