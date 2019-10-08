@@ -199,7 +199,7 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
       ops.emplace_back(LinearOperator(3, 3, matvec, matvec));
     } else {
       double t = 0;
-      double rs[3] = {x[0], x[1], x[2]};
+      double rs[3] = {x_i[0], x_i[1], x_i[2]};
       assert(_proj_exp_cone(rs, &t) == 0);
       double r = rs[0];
       double s = rs[1];
