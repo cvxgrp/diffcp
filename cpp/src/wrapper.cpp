@@ -26,7 +26,6 @@ PYBIND11_MODULE(_diffcp, m) {
       .value("SOC", ConeType::SOC)
       .value("PSD", ConeType::PSD)
       .value("EXP", ConeType::EXP);
-  m.def("M_operator", &M_operator);
   py::class_<LsqrResult>(m, "LsqrResult")
       .def_readonly("solution", &LsqrResult::x);
   m.def("lsqr", &lsqr, "Computes least-squares solution via LSQR", py::arg("A"),
@@ -34,7 +33,7 @@ PYBIND11_MODULE(_diffcp, m) {
         py::arg("btol") = 1e-8, py::arg("conlim") = 1e8,
         py::arg("iter_lim") = -1);
 
-  // TODO: Add def here too
+  m.def("M_operator", &M_operator);
   m.def("M_dense", &M_dense);
   m.def("_solve_derivative_dense", &_solve_derivative_dense);
   m.def("_solve_adjoint_derivative_dense", &_solve_adjoint_derivative_dense);
