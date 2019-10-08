@@ -22,10 +22,10 @@ struct LsqrResult {
  *    minimize ||Ax-b||^2 + damp^2||x||^2
  * where A is a sparse matrix.
  */
-LsqrResult lsqr_sparse(const SparseMatrix& A, const Vector& b,
-                const double damp = 0.0, const double atol = 1e-8,
-                const double btol = 1e-8, const double conlim = 1e8,
-                int iter_lim = -1);
+LsqrResult lsqr_sparse(const SparseMatrix &A, const Vector &b,
+                       const double damp = 0.0, const double atol = 1e-8,
+                       const double btol = 1e-8, const double conlim = 1e8,
+                       int iter_lim = -1);
 
 /**
  * Find the least-squares solution to an abstract linear system of equations.

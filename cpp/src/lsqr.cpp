@@ -36,9 +36,9 @@ inline void _sym_ortho(double a, double b, double &c, double &s, double &r) {
   }
 }
 
-LsqrResult lsqr_sparse(const SparseMatrix& A, const Vector& b, const double damp,
-                const double atol, const double btol, const double conlim,
-                int iter_lim) {
+LsqrResult lsqr_sparse(const SparseMatrix &A, const Vector &b,
+                       const double damp, const double atol, const double btol,
+                       const double conlim, int iter_lim) {
   return lsqr(aslinearoperator(A), b, damp, atol, btol, conlim, iter_lim);
 }
 
