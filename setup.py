@@ -33,10 +33,10 @@ _diffcp = Extension(
             get_pybind_include(),
             get_pybind_include(user=True),
             "cpp/external/eigen",
-            "cpp/include"
+            "cpp/include",
         ],
         language='c++',
-        extra_compile_args=["-O3", "-std=c++11"]
+        extra_compile_args=["-O3", "-std=c++11", "-march=native", "-fopenmp"]
 )
 
 ext_modules = [_proj, _diffcp]

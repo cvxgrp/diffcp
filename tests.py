@@ -137,11 +137,15 @@ class TestConeProgDiff(unittest.TestCase):
     def _test_dproj(self, cone, dual, n, x=None):
         if x is None:
             x = np.random.randn(n)
-        Dpi = _diffcp.dprojection(x, [cone], dual)
         dx = 1e-6 * np.random.randn(n)
         proj_x = cone_lib._proj(x, CPP_CONES_TO_SCS[cone.type], dual)
         z = cone_lib._proj(x + dx, CPP_CONES_TO_SCS[cone.type], dual)
+
+        Dpi = _diffcp.dprojection(x, [cone], dual)
         np.testing.assert_allclose(Dpi.matvec(dx), z - proj_x, atol=1e-4, rtol=1e-4)
+
+        Dpi = _diffcp.dprojection_dense(x, [cone], dual)
+        np.testing.assert_allclose(Dpi @ dx, z - proj_x, atol=1e-4, rtol=1e-4)
 
     def test_dproj_zero(self):
         for _ in range(10):
@@ -233,11 +237,16 @@ class TestConeProgDiff(unittest.TestCase):
 
             for dual in [False, True]:
                 cone_list_cpp = cone_lib.parse_cone_dict_cpp(cones)
-                Dpi = _diffcp.dprojection(x, cone_list_cpp, dual)
                 proj_x = cone_lib.pi(x, cones, dual=dual)
                 dx = 1e-6 * np.random.randn(size)
                 z = cone_lib.pi(x + dx, cones, dual=dual)
+
+                Dpi = _diffcp.dprojection(x, cone_list_cpp, dual)
                 np.testing.assert_allclose(Dpi.matvec(dx), z - proj_x,
+                                           atol=1e-3, rtol=1e-4)
+
+                Dpi = _diffcp.dprojection_dense(x, cone_list_cpp, dual)
+                np.testing.assert_allclose(Dpi @ dx, z - proj_x,
                                            atol=1e-3, rtol=1e-4)
 
     def test_get_random_like(self):
@@ -252,22 +261,40 @@ class TestConeProgDiff(unittest.TestCase):
     def test_solve_and_derivative(self):
         m = 20
         n = 10
+
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
+        for mode in ["lsqr", "dense", "sparse"]:
+            x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
+                A, b, c, cone_dims, eps=1e-10, mode=mode)
 
-        x, y, s, derivative, _ = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, eps=1e-8)
+            dA = utils.get_random_like(
+                A, lambda n: np.random.normal(0, 1e-6, size=n))
+            db = np.random.normal(0, 1e-6, size=b.size)
+            dc = np.random.normal(0, 1e-6, size=c.size)
 
-        dA = utils.get_random_like(
-            A, lambda n: np.random.normal(0, 1e-6, size=n))
-        db = np.random.normal(0, 1e-6, size=b.size)
-        dc = np.random.normal(0, 1e-6, size=c.size)
+            dx, dy, ds = derivative(dA, db, dc, atol=1e-10)
 
-        dx, dy, ds = derivative(dA, db, dc)
+            x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
+                A + dA, b + db, c + dc, cone_dims, eps=1e-10)
 
-        x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
-            A + dA, b + db, c + dc, cone_dims, eps=1e-8)
+            np.testing.assert_allclose(x_pert - x, dx, atol=1e-6)
+            np.testing.assert_allclose(y_pert - y, dy, atol=1e-6)
+            np.testing.assert_allclose(s_pert - s, ds, atol=1e-6)
 
-        np.testing.assert_allclose(x_pert - x, dx, atol=1e-6, rtol=1e-6)
+            x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
+                A, b, c, cone_dims, eps=1e-10, mode=mode)
+
+            objective = c.T @ x
+            dA, db, dc = adjoint_derivative(
+                c, np.zeros(y.size), np.zeros(s.size))
+
+            x_pert, _, _, _, _ = cone_prog.solve_and_derivative(
+                A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10)
+            objective_pert = c.T @ x_pert
+
+            np.testing.assert_allclose(
+                objective_pert - objective,
+                1e-6 * dA.multiply(dA).sum() + 1e-6 * db@db + 1e-6 * dc@dc, atol=1e-8)
 
     def test_warm_start(self):
         m = 20

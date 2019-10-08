@@ -30,11 +30,9 @@ def parse_cone_dict_cpp(cone_list):
     return [Cone(CONE_MAP[cone], [l] if not isinstance(l, (list, tuple)) else l)
             for cone, l in cone_list]
 
-
 def parse_cone_dict(cone_dict):
     """Parses SCS-style cone dictionary."""
     return [(cone, cone_dict[cone]) for cone in CONES if cone in cone_dict]
-
 
 def vec_psd_dim(dim):
     return int(dim * (dim + 1) / 2)
@@ -116,14 +114,74 @@ def _proj(x, cone, dual=False):
         raise NotImplementedError(f"{cone} not implemented")
 
 
+def _dproj_sparse_matrix(x, cone, dual=False):
+    shape = (x.size, x.size)
+    if cone == ZERO:
+        return sparse.eye(*shape) if dual else sparse.csc_matrix(shape)
+    elif cone == POS:
+        return sparse.diags(.5 * (np.sign(x) + 1), format="csc")
+    elif cone == SOC:
+        t = x[0]
+        z = x[1:]
+        norm_z = np.linalg.norm(z, 2)
+        if norm_z <= t:
+            return sparse.eye(*shape)
+        elif norm_z <= -t:
+            return sparse.csc_matrix(shape)
+        else:
+            unit_z = z / norm_z
+            scale_factor = 1.0 / (2 * norm_z)
+            t_plus_norm_z = t + norm_z
+
+            return scale_factor * np.bmat([
+                [np.array([[norm_z]]), z[np.newaxis, :]],
+                [z[:, np.newaxis], t_plus_norm_z *
+                    np.eye(z.size) - t * np.outer(unit_z, unit_z)]
+            ])
+    elif cone in [EXP, PSD]:
+        # TODO: Performance can be improved for the PSD cone
+        # with a manual implementation
+        DP = _dproj(x, cone, dual=dual)
+        return DP @ np.eye(DP.shape[0])
+    else:
+        raise NotImplementedError(f"{cone} not implemented")
+
+
+def dpi_sparse_matrix(x, cones, dual=False):
+    """Derivative of projection onto product of cones (or their duals), at x
+
+    Args:
+        x: NumPy array
+        cones: list of (cone name, size)
+        dual: whether to project onto the dual cone
+
+    Returns:
+        An abstract linear map representing the derivative, with methods
+        `matvec` and `rmatvec`
+    """
+    dprojections = []
+    offset = 0
+    for cone, sz in cones:
+        sz = sz if isinstance(sz, (tuple, list)) else (sz,)
+        if sum(sz) == 0:
+            continue
+        for dim in sz:
+            if cone == PSD:
+                dim = vec_psd_dim(dim)
+            elif cone == EXP:
+                dim *= 3
+            dprojections.append(
+                _dproj_sparse_matrix(x[offset:offset + dim], cone, dual=dual))
+            offset += dim
+    return sparse.block_diag(dprojections)
+
+
 def pi(x, cones, dual=False):
     """Projects x onto product of cones (or their duals)
-
     Args:
         x: NumPy array (with PSD data formatted in SCS convention)
         cones: list of (cone name, size)
         dual: whether to project onto the dual cone
-
     Returns:
         NumPy array that is the projection of `x` onto the (dual) cones
     """
