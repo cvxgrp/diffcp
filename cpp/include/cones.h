@@ -8,12 +8,12 @@
 enum ConeType { ZERO = 0, POS, SOC, PSD, EXP };
 
 class Cone {
-  public:
-    ConeType type;
-    std::vector<int> sizes;
+public:
+  ConeType type;
+  std::vector<int> sizes;
 
-    Cone(ConeType type, const std::vector<int> &sizes)
-        : type(type), sizes(sizes){};
+  Cone(ConeType type, const std::vector<int> &sizes)
+      : type(type), sizes(sizes){};
 };
 
 /* Compute the derivative, at `x`, of a projection onto a cone.
