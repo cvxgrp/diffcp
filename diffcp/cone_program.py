@@ -20,14 +20,14 @@ def pi(z, cones):
         [u, cone_lib.pi(v, cones, dual=True), np.maximum(w, 0)])
 
 
-def dpi_explicit(z, cones):
+def dpi_sparse(z, cones):
     """Derivative of projection onto R^n x K^* x R_+
      `cones` represents a conex cone K, and K^* is its dual cone.
     """
     u, v, w = z
     return sparse.block_diag([
         sparse.eye(np.prod(u.shape)),
-        cone_lib.dpi_explicit(v, cones, dual=True),
+        cone_lib.dpi_sparse(v, cones, dual=True),
         sparse.diags(.5 * (np.sign(w) + 1))
     ])
 
@@ -155,11 +155,11 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
         MT = M.T
     elif mode == "dense_np":
-        M = (Q - sparse.eye(N)) @ dpi_explicit(z, cones) + sparse.eye(N)
+        M = (Q - sparse.eye(N)) @ dpi_sparse(z, cones) + sparse.eye(N)
         M = M.todense()
         MT = M.T
     elif mode == "sparse":
-        M = (Q - sparse.eye(N)) @ dpi_explicit(z, cones) + sparse.eye(N)
+        M = (Q - sparse.eye(N)) @ dpi_sparse(z, cones) + sparse.eye(N)
         MT = M.T
 
     if mode == "lsqr":

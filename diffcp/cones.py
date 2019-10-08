@@ -148,7 +148,7 @@ def _dproj_explicit(x, cone, dual=False):
         raise NotImplementedError(f"{cone} not implemented")
 
 
-def dpi_explicit(x, cones, dual=False):
+def dpi_sparse(x, cones, dual=False):
     """Derivative of projection onto product of cones (or their duals), at x
 
     Args:
