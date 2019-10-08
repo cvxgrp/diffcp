@@ -1,11 +1,14 @@
+import os
 from setuptools import Extension, setup, find_packages
 from setuptools.command.build_ext import build_ext
 import sys
 import setuptools
 from glob import glob
 
+
 with open("README.md", "r") as fh:
     long_description = fh.read()
+
 
 class get_pybind_include(object):
     """Helper class to determine the pybind11 include path
@@ -22,6 +25,14 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
+def get_openmp_flag():
+    try:
+        flag = os.environ["OPENMP_FLAG"]
+        return flag
+    except KeyError:
+        return ""
+
+
 _proj = Extension("_proj",
                   sources=["diffcp/proj.c"],
                   extra_compile_args=["-O3"])
@@ -36,7 +47,8 @@ _diffcp = Extension(
             "cpp/include",
         ],
         language='c++',
-        extra_compile_args=["-O3", "-std=c++11", "-march=native", "-fopenmp"]
+        extra_compile_args=["-O3", "-std=c++11", "-march=native",
+                            get_openmp_flag()]
 )
 
 ext_modules = [_proj, _diffcp]
