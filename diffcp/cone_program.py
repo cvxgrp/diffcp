@@ -116,7 +116,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         SolverError: if the cone program is infeasible or unbounded.
     """
     if mode not in ["dense", "sparse", "lsqr"]:
-        raise ValueError("Unsupported mode {}; the supported modes are 'dense', 'sparse', and 'lsqr'".format(mode))
+        raise ValueError("Unsupported mode {}; the supported modes are "
+                         "'dense', 'sparse', and 'lsqr'".format(mode))
 
 
     data = {
