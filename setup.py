@@ -35,7 +35,7 @@ def get_openmp_flag():
 
 _diffcp = Extension(
         '_diffcp',
-        glob("cpp/src/*.cpp") + glob("cpp/src/*.c"),
+        glob("cpp/src/*.cpp"),
         include_dirs=[
             get_pybind_include(),
             get_pybind_include(user=True),
