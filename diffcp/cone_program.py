@@ -108,7 +108,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     Raises:
         SolverError: if the cone program is infeasible or unbounded.
     """
-    if mode not in ["dense", "dense_np", "sparse", "lsqr"]:
+    if mode not in ["dense", "sparse", "lsqr"]:
         return NotImplementedError
 
     data = {
@@ -154,10 +154,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     if mode == "dense":
         M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
         MT = M.T
-    elif mode == "dense_np":
-        M = (Q - sparse.eye(N)) @ dpi_sparse(z, cones) + sparse.eye(N)
-        M = M.todense()
-        MT = M.T
     elif mode == "sparse":
         M = (Q - sparse.eye(N)) @ dpi_sparse(z, cones) + sparse.eye(N)
         MT = M.T
@@ -190,8 +186,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             dz = np.zeros(rhs.size)
         elif mode == "dense":
             dz = _diffcp._solve_derivative_dense(M, MT, rhs)
-        elif mode == "dense_np":
-            dz = np.linalg.lstsq(M, rhs, rcond=None)[0]
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
             it_ref_iters = kwargs.get("it_ref_iters", 10)
@@ -235,8 +229,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             r = np.zeros(dz.shape)
         elif mode == "dense":
             r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
-        elif mode == "dense_np":
-            r = np.linalg.lstsq(MT, dz, rcond=None)[0]
         elif mode == "sparse":
             rho = kwargs.get("rho", 1e-6)
             it_ref_iters = kwargs.get("it_ref_iters", 5)
