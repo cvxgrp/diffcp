@@ -33,10 +33,6 @@ def get_openmp_flag():
         return ""
 
 
-_proj = Extension("_proj",
-                  sources=["diffcp/proj.c"],
-                  extra_compile_args=["-O3"])
-
 _diffcp = Extension(
         '_diffcp',
         glob("cpp/src/*.cpp") + glob("cpp/src/*.c"),
@@ -51,7 +47,7 @@ _diffcp = Extension(
                             get_openmp_flag()]
 )
 
-ext_modules = [_proj, _diffcp]
+ext_modules = [_diffcp]
 
 setup(
     name='diffcp',
