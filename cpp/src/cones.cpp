@@ -403,8 +403,10 @@ void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type,
   } else if (type == POS) {
     _dprojection_pos_dense(D_block, x);
   } else if (type == SOC) {
+    // TODO: Can manually implement without using the linop.
     _op_into_dense(D_block, _dprojection_soc(x));
   } else if (type == PSD) {
+    // TODO: Should be able to manually implement without using the linop.
     _op_into_dense(D_block, _dprojection_psd(x));
   } else {
     assert(type == EXP);
