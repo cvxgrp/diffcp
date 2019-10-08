@@ -370,6 +370,8 @@ class TestConeProgDiff(unittest.TestCase):
             svx = np.linalg.solve(G, b)
             xo = X.x
             np.testing.assert_allclose(svx, x0)
+        
+        test_basic()
 
 if __name__ == '__main__':
     np.random.seed(0)
