@@ -28,7 +28,11 @@ PYBIND11_MODULE(_diffcp, m) {
       .value("EXP", ConeType::EXP);
   py::class_<LsqrResult>(m, "LsqrResult")
       .def_readonly("solution", &LsqrResult::x);
-  m.def("lsqr", &lsqr, "Computes least-squares solution via LSQR", py::arg("A"),
+  m.def("lsqr_sparse", &lsqr_sparse, "Computes least-squares solution to sparse linear system via LSQR", py::arg("A"),
+        py::arg("rhs"), py::arg("damp") = 0.0, py::arg("atol") = 1e-8,
+        py::arg("btol") = 1e-8, py::arg("conlim") = 1e8,
+        py::arg("iter_lim") = -1);
+  m.def("lsqr", &lsqr, "Computes least-squares solution to abstract linear system via LSQR", py::arg("A"),
         py::arg("rhs"), py::arg("damp") = 0.0, py::arg("atol") = 1e-8,
         py::arg("btol") = 1e-8, py::arg("conlim") = 1e8,
         py::arg("iter_lim") = -1);
