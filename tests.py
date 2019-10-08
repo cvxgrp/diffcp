@@ -364,12 +364,12 @@ class TestConeProgDiff(unittest.TestCase):
 
         def test_basic():
             b_copy = b.copy()
-            X = _diffcp.lsqr_sparse(sparse.csc_matrix(G), b, tol=1e-10)
+            X = _diffcp.lsqr_sparse(sparse.csc_matrix(G), b, atol=1e-10, btol=1e-10)
             np.testing.assert_equal(b_copy, b)
 
             svx = np.linalg.solve(G, b)
-            xo = X.x
-            np.testing.assert_allclose(svx, x0)
+            xo = X.solution
+            np.testing.assert_allclose(svx, xo)
         
         test_basic()
 
