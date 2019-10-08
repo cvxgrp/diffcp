@@ -114,7 +114,7 @@ def _proj(x, cone, dual=False):
         raise NotImplementedError(f"{cone} not implemented")
 
 
-def _dproj_sparse_matrix(x, cone, dual=False):
+def _dproj_sparse(x, cone, dual=False):
     shape = (x.size, x.size)
     if cone == ZERO:
         return sparse.eye(*shape) if dual else sparse.csc_matrix(shape)
@@ -147,7 +147,7 @@ def _dproj_sparse_matrix(x, cone, dual=False):
         raise NotImplementedError(f"{cone} not implemented")
 
 
-def dpi_sparse_matrix(x, cones, dual=False):
+def dpi_sparse(x, cones, dual=False):
     """Derivative of projection onto product of cones (or their duals), at x
 
     Args:
@@ -171,7 +171,7 @@ def dpi_sparse_matrix(x, cones, dual=False):
             elif cone == EXP:
                 dim *= 3
             dprojections.append(
-                _dproj_sparse_matrix(x[offset:offset + dim], cone, dual=dual))
+                _dproj_sparse(x[offset:offset + dim], cone, dual=dual))
             offset += dim
     return sparse.block_diag(dprojections)
 
