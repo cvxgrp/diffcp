@@ -36,7 +36,7 @@ Matrix dpi_dense(const Vector &u, const Vector &v, double w,
   D.block(0, 0, n, n).diagonal().array() += 1.;
   // Could be optimized by having dprojection_dense modifying this in-place,
   // or by not explicitly adding the first and last blocks.
-  D.block(n, n, N - n - 1, N - n - 1) = dprojection_dense(v, cones, true);
+  D.block(n, n, m, m) = dprojection_dense(v, cones, true);
   D(N - 1, N - 1) = gt(w, 0.0);
   return D;
 }

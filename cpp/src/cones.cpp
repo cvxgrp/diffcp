@@ -416,7 +416,7 @@ void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type,
 
 Matrix dprojection_dense(const Vector &x, const std::vector<Cone> &cones,
                          bool dual) {
-  int D_size = _get_D_size(cones);
+  const int D_size = _get_D_size(cones);
   Matrix D = Matrix::Zero(D_size, D_size);
 
   int offset = 0;

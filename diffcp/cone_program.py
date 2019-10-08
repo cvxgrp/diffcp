@@ -57,20 +57,26 @@ class SolverError(Exception):
 
 def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwargs):
     """Solves a cone program, returns its derivative as an abstract linear map.
+
     This function solves a convex cone program, with primal-dual problems
         min.        c^T x                  min.        b^Ty
         subject to  Ax + s = b             subject to  A^Ty + c = 0
                     s \in K                            y \in K^*
+
     The problem data A, b, and c correspond to the arguments `A`, `b`, and `c`,
     and the convex cone `K` corresponds to `cone_dict`; x and s are the primal
     variables, and y is the dual variable.
+
     This function returns a solution (x, y, s) to the program. It also returns
     two functions that respectively represent application of the derivative
     (at A, b, and c) and its adjoint.
+
     The problem data must be formatted according to the SCS convention, see
     https://github.com/cvxgrp/scs.
+
     For background on derivatives of cone programs, see
     http://web.stanford.edu/~boyd/papers/diff_cone_prog.html.
+
     Args:
       A: A sparse SciPy matrix in CSC format; the first block of rows must
         correspondond to the zero cone, the next block to the positive orthant,
@@ -88,7 +94,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
           matrix variable; a value of k for diffcp.EXP corresponds to k / 3
           exponential cones. See SCS documentation for more details.
       warm_start: (optional) A tuple (x, y, s) at which to warm-start SCS.
-      mode: (optional) Which mode to compute derivative with, options are ["dense", "sparse", "lsqr"].
+      mode: (optional) Which mode to compute derivative with, options are
+          ["dense", "sparse", "lsqr"].
       kwargs: (optional) Keyword arguments to send to SCS.
     Returns:
         x: Optimal value of the primal variable x.
@@ -109,7 +116,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         SolverError: if the cone program is infeasible or unbounded.
     """
     if mode not in ["dense", "sparse", "lsqr"]:
-        return NotImplementedError
+        raise ValueError("Unsupported mode {}; the supported modes are 'dense', 'sparse', and 'lsqr'".format(mode))
+
 
     data = {
         "A": A,
@@ -148,17 +156,16 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         [-A, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
-    Q_dense = Q.todense()
 
     D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
     if mode == "dense":
+        Q_dense = Q.todense()
         M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
         MT = M.T
     elif mode == "sparse":
         M = (Q - sparse.eye(N)) @ dpi_sparse_matrix(z, cones) + sparse.eye(N)
         MT = M.T
-
-    if mode == "lsqr":
+    else:
         M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
         MT = M.transpose()
 
@@ -202,7 +209,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
                 if np.linalg.norm(residual) <= 1e-10:
                     break
                 dz = dz + solve(np.append(np.zeros(N), residual))[N:]
-        elif mode == "lsqr":
+        else:
             dz = _diffcp.lsqr(M, rhs).solution
 
         du, dv, dw = np.split(dz, [n, n + m])
@@ -245,10 +252,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
                 if np.linalg.norm(residual) <= 1e-10:
                     break
                 r = r + solve(np.append(np.zeros(N), residual))[N:]
-        elif mode == "lsqr":
-            r = _diffcp.lsqr(MT, dz).solution
         else:
-            raise NotImplementedError(f'Unrecognized mode: {mode}')
+            r = _diffcp.lsqr(MT, dz).solution
 
         values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
         dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
