@@ -390,7 +390,7 @@ void _dprojection_pos_dense(MatrixRef &D_block, const Vector &x) {
   D_block.diagonal() << (0.5 * (sign + 1));
 }
 
-void _dprojection_zero_dense(MatrixRef &D_block, const Vector &x, bool dual) {
+void _dprojection_zero_dense(MatrixRef &D_block, bool dual) {
   if (dual) {
     D_block.diagonal().setOnes();
   }
@@ -399,7 +399,7 @@ void _dprojection_zero_dense(MatrixRef &D_block, const Vector &x, bool dual) {
 void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type,
                         bool dual) {
   if (type == ZERO) {
-    _dprojection_zero_dense(D_block, x, dual);
+    _dprojection_zero_dense(D_block, dual);
   } else if (type == POS) {
     _dprojection_pos_dense(D_block, x);
   } else if (type == SOC) {
