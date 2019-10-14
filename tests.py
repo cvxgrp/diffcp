@@ -347,6 +347,31 @@ class TestConeProgDiff(unittest.TestCase):
         cone_dims = {"f": 2}
         with self.assertRaises(cone_prog.SolverError, msg='Solver scs returned status.*'):
             cone_prog.solve_and_derivative(A, b, c, cone_dims)
+    
+    def test_lsqr(self):
+        n = 35
+        G = np.eye(n)
+        normal = np.random.normal
+        norm = np.linalg.norm
+
+        for jj in range(5):
+            gg = normal(size=n)
+            hh = gg * gg.T
+            G += (hh + hh.T) * 0.5
+            G += normal(size=n) * normal(size=n)
+
+        b = normal(size=n)
+
+        def test_basic():
+            b_copy = b.copy()
+            X = _diffcp.lsqr_sparse(sparse.csc_matrix(G), b, atol=1e-10, btol=1e-10)
+            np.testing.assert_equal(b_copy, b)
+
+            svx = np.linalg.solve(G, b)
+            xo = X.solution
+            np.testing.assert_allclose(svx, xo)
+        
+        test_basic()
 
 if __name__ == '__main__':
     np.random.seed(0)

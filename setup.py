@@ -28,14 +28,14 @@ class get_pybind_include(object):
 def get_openmp_flag():
     try:
         flag = os.environ["OPENMP_FLAG"]
-        return flag
+        return [flag]
     except KeyError:
-        return ""
+        return []
 
 
 _diffcp = Extension(
         '_diffcp',
-        glob("cpp/src/*.cpp") + glob("cpp/src/*.c"),
+        glob("cpp/src/*.cpp"),
         include_dirs=[
             get_pybind_include(),
             get_pybind_include(user=True),
@@ -43,8 +43,7 @@ _diffcp = Extension(
             "cpp/include",
         ],
         language='c++',
-        extra_compile_args=["-O3", "-std=c++11", "-march=native",
-                            get_openmp_flag()]
+        extra_compile_args=["-O3", "-std=c++11", "-march=native"] + get_openmp_flag()
 )
 
 ext_modules = [_diffcp]
