@@ -37,10 +37,3 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b,
                 const double damp = 0.0, const double atol = 1e-8,
                 const double btol = 1e-8, const double conlim = 1e8,
                 int iter_lim = -1);
-
-// std::vector<LsqrResult> lsqr_batch(const std::vector<LinearOperator> &A,
-// const std::vector<Vector> &b, const double damp=0.0,
-//             const double atol=1e-8, const double btol=1e-8, const double
-//             conlim=1e8, int iter_lim=-1, int num_threads=-1);
-
-void print_result(const LsqrResult &result);
