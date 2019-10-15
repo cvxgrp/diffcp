@@ -13,14 +13,14 @@ m = 100
 n = 50
 
 A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
-for mode in ["lsqr", "dense", "sparse"]:
+for mode in ["lsqr", "dense"]:
     x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
         A, b, c, cone_dims, eps=1e-10, mode=mode)
 
     dA = utils.get_random_like(
-        A, lambda n: np.random.normal(0, 1e-6, size=n))
-    db = np.random.normal(0, 1e-6, size=b.size)
-    dc = np.random.normal(0, 1e-6, size=c.size)
+        A, lambda n: np.random.normal(0, 1e-2, size=n))
+    db = np.random.normal(0, 1e-2, size=b.size)
+    dc = np.random.normal(0, 1e-2, size=c.size)
 
     derivative_time = 0.0
     for _ in range(10):

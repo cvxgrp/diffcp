@@ -1,3 +1,5 @@
+import warnings
+
 import diffcp.cones as cone_lib
 
 import numpy as np
@@ -20,35 +22,120 @@ def pi(z, cones):
         [u, cone_lib.pi(v, cones, dual=True), np.maximum(w, 0)])
 
 
-def dpi_sparse(z, cones):
-    """Derivative of projection onto R^n x K^* x R_+
-     `cones` represents a conex cone K, and K^* is its dual cone.
-    """
-    u, v, w = z
-    return sparse.block_diag([
-        sparse.eye(np.prod(u.shape)),
-        cone_lib.dpi_sparse(v, cones, dual=True),
-        sparse.diags(.5 * (np.sign(w) + 1))
-    ])
-
-
-
-def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, kwargs):
+def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, mode, kwargs):
+    """A wrapper around solve_and_derivative for the batch function."""
     return solve_and_derivative(
-        A, b, c, cone_dict, warm_start=warm_start, **kwargs)
+        A, b, c, cone_dict, warm_start=warm_start, mode=mode, **kwargs)
 
 
-def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1,
-                               warm_starts=None, **kwargs):
-    if n_jobs == -1:
-        n_jobs = mp.cpu_count()
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_backward=-1,
+                               mode="lsqr", warm_starts=None, **kwargs):
+    """
+    Solves a batch of cone programs and returns a function that
+    performs a batch of derivatives. Uses a ThreadPool to perform
+    operations across the batch in parallel.
+
+    For more information on the arguments and return values,
+    see the docstring for `solve_and_derivative` function.
+
+    Args:
+        As - A list of A matrices.
+        bs - A list of b arrays.
+        cs - A list of c arrays.
+        cone_dicts - A list of dictionaries describing the cone.
+        n_jobs_forward - Number of jobs to use in the forward pass. n_jobs_forward = 1
+            means serial and n_jobs_forward = -1 defaults to the number of CPUs. (default=1)
+            SCS often uses multiple threads, so n_jobs_forward=1 is often faster.
+        n_jobs_backward - Number of jobs to use in the backward pass. n_jobs_backward = 1
+            means serial and n_jobs_backward = -1 defaults to the number of CPUs. (default=-1)
+        mode - Differentiation mode in ["lsqr", "dense"].
+        warm_starts - A list of warm starts.
+        kwargs - kwargs sent to scs.
+
+    Returns:
+        xs: A list of x arrays.
+        ys: A list of y arrays.
+        ss: A list of s arrays.
+        D_batch: A callable with signature
+                D_batch(dAs, dbs, dcs) -> dxs, dys, dss
+            This callable maps lists of problem data derivatives to lists of solution derivatives.
+        DT_batch: A callable with signature
+                DT_batch(dxs, dys, dss) -> dAs, dbs, dcs
+            This callable maps lists of solution derivatives to lists of problem data derivatives.
+    """
     batch_size = len(As)
-    pool = ThreadPool(processes=n_jobs)
-    args = []
-    for i in range(batch_size):
-        args += [(As[i], bs[i], cs[i], cone_dicts[i],
-                  None if warm_starts is None else warm_starts[i], kwargs)]
-    return pool.starmap(solve_and_derivative_wrapper, args)
+    if warm_starts is None:
+        warm_starts = [None]*batch_size
+    if n_jobs_forward == -1:
+        n_jobs_forward = mp.cpu_count()
+    if n_jobs_backward == -1:
+        n_jobs_backward = mp.cpu_count()
+    n_jobs_forward = min(batch_size, n_jobs_forward)
+    n_jobs_backward = min(batch_size, n_jobs_backward)
+
+    if n_jobs_forward == 1:
+        # serial
+        xs, ys, ss, Ds, DTs = [], [], [], [], []
+        for i in range(batch_size):
+            x, y, s, D, DT = solve_and_derivative(As[i], bs[i], cs[i],
+                    cone_dicts[i], warm_starts[i], mode=mode, **kwargs)
+            xs += [x]
+            ys += [y]
+            ss += [s]
+            Ds += [D]
+            DTs += [DT]
+    else:
+        # thread pool
+        pool = ThreadPool(processes=n_jobs_forward)
+        args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in \
+                    zip(As, bs, cs, cone_dicts, warm_starts)]
+        results = pool.starmap(solve_and_derivative_wrapper, args)
+        xs = [r[0] for r in results]
+        ys = [r[1] for r in results]
+        ss = [r[2] for r in results]
+        Ds = [r[3] for r in results]
+        DTs = [r[4] for r in results]
+
+    if n_jobs_backward == 1:
+        def D_batch(dAs, dbs, dcs, **kwargs):
+            dxs, dys, dss = [], [], []
+            for i in range(batch_size):
+                dx, dy, ds = Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
+                dxs += [dx]
+                dys += [dy]
+                dss += [ds]
+            return dxs, dys, dss
+        
+        def DT_batch(dxs, dys, dss, **kwargs):
+            dAs, dbs, dcs = [], [], []
+            for i in range(batch_size):
+                dA, db, dc = DTs[i](dxs[i], dys[i], dss[i], **kwargs)
+                dAs += [dA]
+                dbs += [db]
+                dcs += [dc]
+            return dAs, dbs, dcs
+    else:
+        pool = ThreadPool(processes=n_jobs_backward)
+
+        def D_batch(dAs, dbs, dcs, **kwargs):
+            def Di(i):
+                return Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
+            results = pool.map(Di, range(batch_size))
+            dxs = [r[0] for r in results]
+            dys = [r[1] for r in results]
+            dss = [r[2] for r in results]
+            return dxs, dys, dss
+
+        def DT_batch(dxs, dys, dss, **kwargs):
+            def DTi(i):
+                return DTs[i](dxs[i], dys[i], dss[i], **kwargs)
+            results = pool.map(DTi, range(batch_size))
+            dAs = [r[0] for r in results]
+            dbs = [r[1] for r in results]
+            dcs = [r[2] for r in results]
+            return dAs, dbs, dcs
+
+    return xs, ys, ss, D_batch, DT_batch
 
 
 class SolverError(Exception):
@@ -95,7 +182,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
           exponential cones. See SCS documentation for more details.
       warm_start: (optional) A tuple (x, y, s) at which to warm-start SCS.
       mode: (optional) Which mode to compute derivative with, options are
-          ["dense", "sparse", "lsqr"].
+          ["dense", "lsqr"].
       kwargs: (optional) Keyword arguments to send to SCS.
     Returns:
         x: Optimal value of the primal variable x.
@@ -115,10 +202,9 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     Raises:
         SolverError: if the cone program is infeasible or unbounded.
     """
-    if mode not in ["dense", "sparse", "lsqr"]:
+    if mode not in ["dense", "lsqr"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
-                         "'dense', 'sparse', and 'lsqr'".format(mode))
-
+                         "'dense' and 'lsqr'".format(mode))
 
     data = {
         "A": A,
@@ -135,8 +221,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
 
     # check status
     status = result["info"]["status"]
-    if status == "Solved/Innacurate":
-        warnings.warn("Solved/Innacurate.")
+    if status == "Solved/Inaccurate":
+        warnings.warn("Solved/Inaccurate.")
     elif status != "Solved":
         raise SolverError("Solver scs returned status %s" % status)
 
@@ -162,9 +248,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     if mode == "dense":
         Q_dense = Q.todense()
         M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
-        MT = M.T
-    elif mode == "sparse":
-        M = (Q - sparse.eye(N)) @ dpi_sparse(z, cones) + sparse.eye(N)
         MT = M.T
     else:
         M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
@@ -194,22 +277,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             dz = np.zeros(rhs.size)
         elif mode == "dense":
             dz = _diffcp._solve_derivative_dense(M, MT, rhs)
-        elif mode == "sparse":
-            rho = kwargs.get("rho", 1e-6)
-            it_ref_iters = kwargs.get("it_ref_iters", 10)
-            M_iref = sparse.bmat([
-                [-sparse.eye(N), M],
-                [MT, rho * sparse.eye(N)]
-            ])
-            solve = splinalg.factorized(M_iref.tocsc())
-            rhs = MT @ rhs
-            dz = np.zeros(N)
-            # iterative refinement
-            for _ in range(it_ref_iters):
-                residual = rhs - MT @ (M @ dz)
-                if np.linalg.norm(residual) <= 1e-10:
-                    break
-                dz = dz + solve(np.append(np.zeros(N), residual))[N:]
         else:
             dz = _diffcp.lsqr(M, rhs).solution
 
@@ -237,22 +304,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
             r = np.zeros(dz.shape)
         elif mode == "dense":
             r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
-        elif mode == "sparse":
-            rho = kwargs.get("rho", 1e-6)
-            it_ref_iters = kwargs.get("it_ref_iters", 5)
-            MT_iref = sparse.bmat([
-                [-sparse.eye(N), MT],
-                [M, rho * sparse.eye(N)]
-            ])
-            solve = splinalg.factorized(MT_iref.tocsc())
-            rhs = M @ dz
-            r = np.zeros(N)
-            # iterative refinement
-            for k in range(it_ref_iters):
-                residual = rhs - M @ (MT @ r)
-                if np.linalg.norm(residual) <= 1e-10:
-                    break
-                r = r + solve(np.append(np.zeros(N), residual))[N:]
         else:
             r = _diffcp.lsqr(MT, dz).solution
 

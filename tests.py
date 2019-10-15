@@ -1,9 +1,9 @@
 import unittest
+
 import cvxpy as cp
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg as splinalg
-import time
 
 import diffcp.cone_program as cone_prog
 import diffcp.cones as cone_lib
@@ -44,6 +44,7 @@ class TestConeProgDiff(unittest.TestCase):
         self.assertFalse(_diffcp.in_exp_dual(np.array([0, 1, -1])))
 
     def test_unvec_symm(self):
+        np.random.seed(0)
         n = 5
         x = np.random.randn(n, n)
         x = x + x.T
@@ -51,12 +52,14 @@ class TestConeProgDiff(unittest.TestCase):
             cone_lib.unvec_symm(cone_lib.vec_symm(x), n), x)
 
     def test_vec_symm(self):
+        np.random.seed(0)
         n = 5
         x = np.random.randn(cone_lib.vec_psd_dim(n))
         np.testing.assert_allclose(
             cone_lib.vec_symm(cone_lib.unvec_symm(x, n)), x)
 
     def test_proj_zero(self):
+        np.random.seed(0)
         n = 100
         for _ in range(10):
             x = np.random.randn(n)
@@ -67,6 +70,7 @@ class TestConeProgDiff(unittest.TestCase):
                 np.zeros(n))
 
     def test_proj_pos(self):
+        np.random.seed(0)
         n = 100
         for _ in range(15):
             x = np.random.randn(n)
@@ -76,6 +80,7 @@ class TestConeProgDiff(unittest.TestCase):
                 p, cone_lib._proj(x, cone_lib.POS, dual=True))
 
     def test_proj_soc(self):
+        np.random.seed(0)
         n = 100
         for _ in range(15):
             x = np.random.randn(n)
@@ -91,6 +96,7 @@ class TestConeProgDiff(unittest.TestCase):
                 p, cone_lib._proj(x, cone_lib.SOC, dual=True))
 
     def test_proj_psd(self):
+        np.random.seed(0)
         n = 10
         for _ in range(15):
             x = np.random.randn(n, n)
@@ -107,6 +113,7 @@ class TestConeProgDiff(unittest.TestCase):
                 cone_lib._proj(x_vec, cone_lib.PSD, dual=True), n))
 
     def test_proj_exp(self):
+        np.random.seed(0)
         for _ in range(15):
             x = np.random.randn(9)
             var = cp.Variable(9)
@@ -148,34 +155,39 @@ class TestConeProgDiff(unittest.TestCase):
         np.testing.assert_allclose(Dpi @ dx, z - proj_x, atol=1e-4, rtol=1e-4)
 
     def test_dproj_zero(self):
+        np.random.seed(0)
         for _ in range(10):
             self._test_dproj(Cone(ConeType.ZERO, [55]), True, 55)
             self._test_dproj(Cone(ConeType.ZERO, [55]), False, 55)
 
     def test_dproj_pos(self):
+        np.random.seed(0)
         for _ in range(10):
             self._test_dproj(Cone(ConeType.POS, [55]), True, 55)
             self._test_dproj(Cone(ConeType.POS, [55]), False, 55)
 
     def test_dproj_soc(self):
+        np.random.seed(0)
         for _ in range(10):
             self._test_dproj(Cone(ConeType.SOC, [55]), True, 55)
             self._test_dproj(Cone(ConeType.SOC, [55]), False, 55)
 
     def test_dproj_psd(self):
-        np.random.seed(1)
+        np.random.seed(0)
         for _ in range(10):
             # n=55 equals k * (k + 1) / 2
             self._test_dproj(Cone(ConeType.PSD, [cone_lib.psd_dim(55)]), True, 55)
             self._test_dproj(Cone(ConeType.PSD, [cone_lib.psd_dim(55)]), False, 55)
 
     def test_dproj_exp(self):
+        np.random.seed(0)
         for _ in range(10):
             # dimension must be a multiple of 3
             self._test_dproj(Cone(ConeType.EXP, [18]), True, 54)
             self._test_dproj(Cone(ConeType.EXP, [18]), False, 54)
 
     def test_pi(self):
+        np.random.seed(0)
         for _ in range(10):
             zero_dim = np.random.randint(1, 10)
             pos_dim = np.random.randint(1, 10)
@@ -220,6 +232,7 @@ class TestConeProgDiff(unittest.TestCase):
                                            cone_lib._proj(x[offset:], cone_lib.EXP, dual=dual))
 
     def test_dpi(self):
+        np.random.seed(0)
         for _ in range(10):
             zero_dim = np.random.randint(1, 10)
             pos_dim = np.random.randint(1, 10)
@@ -250,6 +263,7 @@ class TestConeProgDiff(unittest.TestCase):
                                            atol=1e-3, rtol=1e-4)
 
     def test_get_random_like(self):
+        np.random.seed(0)
         A = sparse.eye(5)
         B = utils.get_random_like(A,
                                   lambda n: np.random.normal(0, 1e-6, size=n))
@@ -259,11 +273,12 @@ class TestConeProgDiff(unittest.TestCase):
         self.assertListEqual(A_c, B_c)
 
     def test_solve_and_derivative(self):
+        np.random.seed(0)
         m = 20
         n = 10
 
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
-        for mode in ["lsqr", "dense", "sparse"]:
+        for mode in ["lsqr", "dense"]:
             x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
                 A, b, c, cone_dims, eps=1e-10, mode=mode)
 
@@ -297,6 +312,7 @@ class TestConeProgDiff(unittest.TestCase):
                 1e-6 * dA.multiply(dA).sum() + 1e-6 * db@db + 1e-6 * dc@dc, atol=1e-8)
 
     def test_warm_start(self):
+        np.random.seed(0)
         m = 20
         n = 10
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
@@ -310,37 +326,38 @@ class TestConeProgDiff(unittest.TestCase):
         np.testing.assert_allclose(s, s_p, atol=1e-7)
 
     def test_threading(self):
+        np.random.seed(0)
         m = 20
         n = 10
         As, bs, cs, cone_dicts = [], [], [], []
         results = []
 
-        serial_time = 0.0
         for _ in range(50):
             A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
             As += [A]
             bs += [b]
             cs += [c]
             cone_dicts += [cone_dims]
-            tic = time.time()
             results.append(cone_prog.solve_and_derivative(A, b, c, cone_dims))
-            toc = time.time()
-            serial_time += toc - tic
 
-        tic = time.time()
-        results_thread = cone_prog.solve_and_derivative_batch(
-            As, bs, cs, cone_dicts)
-        toc = time.time()
-        parallel_time = toc - tic
+        for n_jobs in [1, -1]:
+            xs, ys, ss, _, DT_batch = cone_prog.solve_and_derivative_batch(
+                As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_backward=n_jobs)
 
-        self.assertTrue(parallel_time < serial_time)
-
-        for i in range(50):
-            np.testing.assert_allclose(results[i][0], results_thread[i][0])
-            np.testing.assert_allclose(results[i][1], results_thread[i][1])
-            np.testing.assert_allclose(results[i][2], results_thread[i][2])
+            for i in range(50):
+                np.testing.assert_allclose(results[i][0], xs[i])
+                np.testing.assert_allclose(results[i][1], ys[i])
+                np.testing.assert_allclose(results[i][2], ss[i])
+            
+            dAs, dbs, dcs = DT_batch(xs, ys, ss)
+            for i in range(50):
+                dA, db, dc = results[i][-1](results[i][0], results[i][1], results[i][2])
+                np.testing.assert_allclose(dA.todense(), dAs[i].todense())
+                np.testing.assert_allclose(dbs[i], db)
+                np.testing.assert_allclose(dcs[i], dc)
 
     def test_infeasible(self):
+        np.random.seed(0)
         c = np.ones(1)
         b = np.array([1.0, -1.0])
         A = sparse.csc_matrix(np.ones((2, 1)))
@@ -349,6 +366,7 @@ class TestConeProgDiff(unittest.TestCase):
             cone_prog.solve_and_derivative(A, b, c, cone_dims)
     
     def test_lsqr(self):
+        np.random.seed(0)
         n = 35
         G = np.eye(n)
         normal = np.random.normal
@@ -362,17 +380,13 @@ class TestConeProgDiff(unittest.TestCase):
 
         b = normal(size=n)
 
-        def test_basic():
-            b_copy = b.copy()
-            X = _diffcp.lsqr_sparse(sparse.csc_matrix(G), b, atol=1e-10, btol=1e-10)
-            np.testing.assert_equal(b_copy, b)
+        b_copy = b.copy()
+        X = _diffcp.lsqr_sparse(sparse.csc_matrix(G), b, atol=1e-10, btol=1e-10)
+        np.testing.assert_equal(b_copy, b)
 
-            svx = np.linalg.solve(G, b)
-            xo = X.solution
-            np.testing.assert_allclose(svx, xo)
-        
-        test_basic()
+        svx = np.linalg.solve(G, b)
+        xo = X.solution
+        np.testing.assert_allclose(svx, xo)
 
 if __name__ == '__main__':
-    np.random.seed(0)
     unittest.main()
