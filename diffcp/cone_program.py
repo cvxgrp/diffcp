@@ -1,6 +1,8 @@
 import warnings
 import os
 
+os.environ["OMP_THREAD_LIMIT"] = "1"
+
 import diffcp.cones as cone_lib
 
 import numpy as np
@@ -90,22 +92,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_
         pool = ThreadPool(processes=n_jobs_forward)
         args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in \
                     zip(As, bs, cs, cone_dicts, warm_starts)]
-
-        # set thread limit to 1
-        try:
-            thread_limit = os.environ["OMP_THREAD_LIMIT"] 
-        except KeyError:
-            thread_limit = None
-        os.environ["OMP_THREAD_LIMIT"] = "1"
-
         results = pool.starmap(solve_and_derivative_wrapper, args)
-
-        # reset thread limit
-        if thread_limit is not None:
-            os.environ["OMP_THREAD_LIMIT"] = thread_limit
-        else:
-            del os.environ["OMP_THREAD_LIMIT"]
-
         xs = [r[0] for r in results]
         ys = [r[1] for r in results]
         ss = [r[2] for r in results]
