@@ -6,6 +6,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import scs
+from threadpoolctl import threadpool_limits
 
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
@@ -28,7 +29,7 @@ def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, mode, kwargs):
         A, b, c, cone_dict, warm_start=warm_start, mode=mode, **kwargs)
 
 
-def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_backward=-1,
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs_backward=-1,
                                mode="lsqr", warm_starts=None, **kwargs):
     """
     Solves a batch of cone programs and returns a function that
@@ -44,10 +45,9 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_
         cs - A list of c arrays.
         cone_dicts - A list of dictionaries describing the cone.
         n_jobs_forward - Number of jobs to use in the forward pass. n_jobs_forward = 1
-            means serial and n_jobs_forward = -1 defaults to the number of CPUs. (default=1)
-            SCS often uses multiple threads, so n_jobs_forward=1 is often faster.
+            means serial and n_jobs_forward = -1 defaults to the number of CPUs (default=-1).
         n_jobs_backward - Number of jobs to use in the backward pass. n_jobs_backward = 1
-            means serial and n_jobs_backward = -1 defaults to the number of CPUs. (default=-1)
+            means serial and n_jobs_backward = -1 defaults to the number of CPUs (default=-1).
         mode - Differentiation mode in ["lsqr", "dense"].
         warm_starts - A list of warm starts.
         kwargs - kwargs sent to scs.
@@ -89,7 +89,8 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_
         pool = ThreadPool(processes=n_jobs_forward)
         args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in \
                     zip(As, bs, cs, cone_dicts, warm_starts)]
-        results = pool.starmap(solve_and_derivative_wrapper, args)
+        with threadpool_limits(limits=1):
+            results = pool.starmap(solve_and_derivative_wrapper, args)
         xs = [r[0] for r in results]
         ys = [r[1] for r in results]
         ss = [r[2] for r in results]
