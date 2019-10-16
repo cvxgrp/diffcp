@@ -342,7 +342,7 @@ class TestConeProgDiff(unittest.TestCase):
 
         for n_jobs in [1, -1]:
             xs, ys, ss, _, DT_batch = cone_prog.solve_and_derivative_batch(
-                As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_backward=n_jobs)
+                As, bs, cs, cone_dicts, n_jobs_forward=n_jobs, n_jobs_backward=n_jobs)
 
             for i in range(50):
                 np.testing.assert_allclose(results[i][0], xs[i])
