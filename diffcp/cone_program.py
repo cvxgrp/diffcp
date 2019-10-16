@@ -1,7 +1,4 @@
 import warnings
-import os
-
-os.environ["OMP_NUM_THREADS"] = "1"
 
 import diffcp.cones as cone_lib
 
@@ -9,6 +6,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import scs
+from threadpoolctl import threadpool_limits
 
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
@@ -92,7 +90,8 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_
         pool = ThreadPool(processes=n_jobs_forward)
         args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in \
                     zip(As, bs, cs, cone_dicts, warm_starts)]
-        results = pool.starmap(solve_and_derivative_wrapper, args)
+        with threadpool_limits(limits=1):
+            results = pool.starmap(solve_and_derivative_wrapper, args)
         xs = [r[0] for r in results]
         ys = [r[1] for r in results]
         ss = [r[2] for r in results]
