@@ -1,7 +1,7 @@
 import warnings
 import os
 
-os.environ["OMP_THREAD_LIMIT"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
 
 import diffcp.cones as cone_lib
 
