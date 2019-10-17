@@ -246,8 +246,8 @@ LinearOperator _dprojection_psd(const Vector &x) {
     return identity(n);
   }
 
-  // k is the number of negative eigenvalues in X
-  int k = 0;
+  // k is the number of negative eigenvalues in X minus ONE
+  int k = -1;
   for (int i = 0; i < eigenvalues.size(); ++i) {
     if (eigenvalues[i] < 0) {
       k += 1;
