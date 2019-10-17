@@ -265,10 +265,10 @@ LinearOperator _dprojection_psd(const Vector &x) {
           tmp(i, j) = 0;
         } else if (i > k && j <= k) {
           double lambda_i_pos = std::max(eigenvalues[i], 0.0);
-          double lambda_j_neg = std::min(eigenvalues[j], 0.0);
+          double lambda_j_neg = -1 * std::min(eigenvalues[j], 0.0);
           tmp(i, j) *= lambda_i_pos / (lambda_j_neg + lambda_i_pos);
         } else if (i <= k && j > k) {
-          double lambda_i_neg = std::min(eigenvalues[i], 0.0);
+          double lambda_i_neg = -1 * std::min(eigenvalues[i], 0.0);
           double lambda_j_pos = std::max(eigenvalues[j], 0.0);
           tmp(i, j) *= lambda_j_pos / (lambda_i_neg + lambda_j_pos);
         }
