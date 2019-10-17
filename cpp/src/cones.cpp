@@ -243,7 +243,6 @@ LinearOperator _dprojection_psd(const Vector &x) {
 
   // all the eigenvalues are >= 0
   if (eigenvalues[0] >= 0) {
-    std::cout << "identity" << std::endl;
     return identity(n);
   }
 
