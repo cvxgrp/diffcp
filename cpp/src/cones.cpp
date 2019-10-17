@@ -240,18 +240,23 @@ LinearOperator _dprojection_psd(const Vector &x) {
   eigen_solver.compute(X);
   const Vector &eigenvalues = eigen_solver.eigenvalues();
   const Matrix &Q = eigen_solver.eigenvectors();
+
+  // all the eigenvalues are >= 0
   if (eigenvalues[0] >= 0) {
+    std::cout << "identity" << std::endl;
     return identity(n);
   }
-  // k is the index of the first nonnegative index
-  int k = -1;
+
+  // k is the number of negative eigenvalues in X
+  int k = 0;
   for (int i = 0; i < eigenvalues.size(); ++i) {
-    if (eigenvalues[i] >= 0) {
-      k = i;
+    if (eigenvalues[i] < 0) {
+      k += 1;
+    } else {
       break;
     }
   }
-  assert(k > -1);
+
   const VecFn matvec = [eigenvalues, Q, k](const Vector &y) -> Vector {
     Matrix tmp = Q.transpose() * matrix_from_lower_triangular(y) * Q;
     // Componentwise multiplication by the matrix `B` from BMB'18.
