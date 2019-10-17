@@ -11,13 +11,11 @@
 #define CONE_THRESH (1e-6)
 #define EXP_CONE_MAX_ITERS (200)
 
-#define ABS(x) (((x) < 0) ? -(x) : (x))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
-const double EulerConstant = std::exp(1.0);
+constexpr double EulerConstant = std::exp(1.0);
+constexpr double sqrt_two = std::sqrt(2.0);
 
 double exp_newton_one_d(double rho, double y_hat, double z_hat) {
-  double t = MAX(-z_hat, 1e-6);
+  double t = std::max(-z_hat, 1e-6);
   double f, fp;
   int i;
   for (i = 0; i < EXP_CONE_MAX_ITERS; ++i) {
@@ -30,7 +28,7 @@ double exp_newton_one_d(double rho, double y_hat, double z_hat) {
       return 0;
     } else if (t <= 0) {
       return z_hat;
-    } else if (ABS(f) < CONE_TOL) {
+    } else if (std::abs(f) < CONE_TOL) {
       break;
     }
   }
@@ -65,8 +63,7 @@ int _proj_exp_cone(double *v, double *rho) {
   int i;
   double ub, lb, g, x[3];
   double r = v[0], s = v[1], t = v[2];
-  double tol = CONE_TOL; /* iter < 0 ? CONE_TOL : MAX(CONE_TOL, 1 /
-                               POWF((iter + 1), CONE_RATE)); */
+  double tol = CONE_TOL;
 
   /* v in cl(Kexp) */
   if ((s * exp(r / s) - t <= CONE_THRESH && s > 0) ||
@@ -75,7 +72,7 @@ int _proj_exp_cone(double *v, double *rho) {
   }
 
   /* -v in Kexp^* */
-  if ((-r < 0 && r * exp(s / r) + exp(1) * t <= CONE_THRESH) ||
+  if ((-r < 0 && r * exp(s / r) + EulerConstant * t <= CONE_THRESH) ||
       (-r == 0 && -s >= 0 && -t >= 0)) {
     memset(v, 0, 3 * sizeof(double));
     return 0;
@@ -84,7 +81,7 @@ int _proj_exp_cone(double *v, double *rho) {
   /* special case with analytical solution */
   if (r < 0 && s < 0) {
     v[1] = 0.0;
-    v[2] = MAX(v[2], 0);
+    v[2] = std::max(v[2], 0.0);
     return 0;
   }
 
@@ -119,12 +116,12 @@ Eigen::Vector3d project_exp_cone(const Eigen::Vector3d &x) {
 }
 
 bool in_exp(const Eigen::Vector3d &x) {
-  return (x[0] <= 0 && x[1] == 0 && x[2] >= 0) or
+  return (x[0] <= 0 && x[1] == 0 && x[2] >= 0) ||
          (x[1] > 0 && x[1] * exp(x[0] / x[1]) - x[2] <= CONE_THRESH);
 }
 
 bool in_exp_dual(const Eigen::Vector3d &x) {
-  return (x[0] == 0 && x[1] >= 0 && x[2] >= 0) or
+  return (x[0] == 0 && x[1] >= 0 && x[2] >= 0) ||
          (x[0] < 0 &&
           -x[0] * exp(x[1] / x[0]) - EulerConstant * x[2] <= CONE_THRESH);
 }
@@ -134,7 +131,6 @@ int vectorized_psd_size(int n) { return n * (n + 1) / 2; }
 Vector lower_triangular_from_matrix(const Matrix &matrix) {
   int n = matrix.rows();
   Vector lower_tri = Vector::Zero(vectorized_psd_size(n));
-  double sqrt_two = std::sqrt(2.0);
   int offset = 0;
   for (int col = 0; col < n; ++col) {
     for (int row = col; row < n; ++row) {
@@ -152,7 +148,6 @@ Vector lower_triangular_from_matrix(const Matrix &matrix) {
 Matrix matrix_from_lower_triangular(const Vector &lower_tri) {
   int n = static_cast<int>(std::sqrt(2 * lower_tri.size()));
   Matrix matrix = Matrix::Zero(n, n);
-  double sqrt_two = sqrt(2.0);
   int offset = 0;
   for (int col = 0; col < n; ++col) {
     for (int row = col; row < n; ++row) {
@@ -200,7 +195,8 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
     } else {
       double t = 0;
       double rs[3] = {x_i[0], x_i[1], x_i[2]};
-      assert(_proj_exp_cone(rs, &t) == 0);
+      int ret = _proj_exp_cone(rs, &t);
+      assert(ret == 0);
       double r = rs[0];
       double s = rs[1];
       if (s == 0) {
