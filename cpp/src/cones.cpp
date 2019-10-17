@@ -11,8 +11,8 @@
 #define CONE_THRESH (1e-6)
 #define EXP_CONE_MAX_ITERS (200)
 
-constexpr double EulerConstant = std::exp(1.0);
-constexpr double sqrt_two = std::sqrt(2.0);
+const double EulerConstant = std::exp(1.0);
+const double sqrt_two = std::sqrt(2.0);
 
 double exp_newton_one_d(double rho, double y_hat, double z_hat) {
   double t = std::max(-z_hat, 1e-6);
