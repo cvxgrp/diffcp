@@ -8,6 +8,8 @@ import scs
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
+import warnings
+
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -36,16 +38,40 @@ def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, kwargs):
     return solve_and_derivative(A, b, c, cone_dict, warm_start=warm_start, **kwargs)
 
 
-def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs=-1, warm_starts=None, **kwargs):
-    if n_jobs == -1:
-        n_jobs = mp.cpu_count()
+def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs_backward=-1,
+                               mode="lsqr", warm_starts=None, **kwargs):
     batch_size = len(As)
-    pool = ThreadPool(processes=n_jobs)
-    args = []
+    if warm_starts is None:
+        warm_starts = [None] * batch_size
+    xs, ys, ss, Ds, DTs = [], [], [], [], []
     for i in range(batch_size):
-        args += [(As[i], bs[i], cs[i], cone_dicts[i],
-                  None if warm_starts is None else warm_starts[i], kwargs)]
-    return pool.starmap(solve_and_derivative_wrapper, args)
+        x, y, s, D, DT = solve_and_derivative(As[i], bs[i], cs[i],
+                                              cone_dicts[i], warm_starts[i], **kwargs)
+        xs += [x]
+        ys += [y]
+        ss += [s]
+        Ds += [D]
+        DTs += [DT]
+
+    def D_batch(dAs, dbs, dcs, **kwargs):
+        dxs, dys, dss = [], [], []
+        for i in range(batch_size):
+            dx, dy, ds = Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
+            dxs += [dx]
+            dys += [dy]
+            dss += [ds]
+        return dxs, dys, dss
+
+    def DT_batch(dxs, dys, dss, **kwargs):
+        dAs, dbs, dcs = [], [], []
+        for i in range(batch_size):
+            dA, db, dc = DTs[i](dxs[i], dys[i], dss[i], **kwargs)
+            dAs += [dA]
+            dbs += [db]
+            dcs += [dc]
+        return dAs, dbs, dcs
+
+    return xs, ys, ss, D_batch, DT_batch
 
 
 class SolverError(Exception):
@@ -128,8 +154,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs):
 
     # check status
     status = result["info"]["status"]
-    if status == "Solved/Innacurate":
-        warnings.warn("Solved/Innacurate.")
+    if status == "Solved/Inaccurate":
+        warnings.warn("Solved/Inaccurate.")
     elif status != "Solved":
         raise SolverError("Solver scs returned status %s" % status)
 
