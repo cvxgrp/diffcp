@@ -141,18 +141,18 @@ class TestConeProgDiff(unittest.TestCase):
             np.testing.assert_allclose(
                 p_dual, x + var.value, atol=1e-4, rtol=1e-4)
 
-    def _test_dproj(self, cone, dual, n, x=None):
+    def _test_dproj(self, cone, dual, n, x=None, tol=1e-6):
         if x is None:
             x = np.random.randn(n)
-        dx = 1e-6 * np.random.randn(n)
+        dx = 1e-4 * np.random.randn(n)
         proj_x = cone_lib._proj(x, CPP_CONES_TO_SCS[cone.type], dual)
         z = cone_lib._proj(x + dx, CPP_CONES_TO_SCS[cone.type], dual)
 
         Dpi = _diffcp.dprojection(x, [cone], dual)
-        np.testing.assert_allclose(Dpi.matvec(dx), z - proj_x, atol=1e-4, rtol=1e-4)
+        np.testing.assert_allclose(Dpi.matvec(dx), z - proj_x, atol=tol)
 
         Dpi = _diffcp.dprojection_dense(x, [cone], dual)
-        np.testing.assert_allclose(Dpi @ dx, z - proj_x, atol=1e-4, rtol=1e-4)
+        np.testing.assert_allclose(Dpi @ dx, z - proj_x, atol=tol)
 
     def test_dproj_zero(self):
         np.random.seed(0)
