@@ -40,6 +40,7 @@ _diffcp = Extension(
             get_pybind_include(),
             get_pybind_include(user=True),
             "cpp/external/eigen",
+            "cpp/external/eigen/Eigen",
             "cpp/include",
         ],
         language='c++',
@@ -50,7 +51,7 @@ ext_modules = [_diffcp]
 
 setup(
     name='diffcp',
-    version="1.0.5",
+    version="1.0.5post0",
     author="Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, Walaa Moursi",
     long_description=long_description,
     long_description_content_type="text/markdown",
