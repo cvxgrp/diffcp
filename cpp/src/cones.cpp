@@ -67,13 +67,13 @@ int _proj_exp_cone(double *v, double *rho) {
 
   /* v in cl(Kexp) */
   if ((s * exp(r / s) - t <= CONE_THRESH && s > 0) ||
-      (r <= 0 && s == 0 && t >= 0)) {
+      (r <= 0 && std::abs(s) <= CONE_THRESH && t >= 0)) {
     return 0;
   }
 
   /* -v in Kexp^* */
   if ((-r < 0 && r * exp(s / r) + EulerConstant * t <= CONE_THRESH) ||
-      (-r == 0 && -s >= 0 && -t >= 0)) {
+      (std::abs(r) <= CONE_THRESH && -s >= 0 && -t >= 0)) {
     memset(v, 0, 3 * sizeof(double));
     return 0;
   }
@@ -116,12 +116,12 @@ Eigen::Vector3d project_exp_cone(const Eigen::Vector3d &x) {
 }
 
 bool in_exp(const Eigen::Vector3d &x) {
-  return (x[0] <= 0 && x[1] == 0 && x[2] >= 0) ||
+  return (x[0] <= 0 && std::abs(x[1]) <= CONE_THRESH && x[2] >= 0) ||
          (x[1] > 0 && x[1] * exp(x[0] / x[1]) - x[2] <= CONE_THRESH);
 }
 
 bool in_exp_dual(const Eigen::Vector3d &x) {
-  return (x[0] == 0 && x[1] >= 0 && x[2] >= 0) ||
+  return (std::abs(x[0]) <= CONE_THRESH && x[1] >= 0 && x[2] >= 0) ||
          (x[0] < 0 &&
           -x[0] * exp(x[1] / x[0]) - EulerConstant * x[2] <= CONE_THRESH);
 }
@@ -265,17 +265,10 @@ LinearOperator _dprojection_psd(const Vector &x) {
           tmp(i, j) = 0;
         } else if (i > k && j <= k) {
           double lambda_i_pos = std::max(eigenvalues[i], 0.0);
-<<<<<<< Updated upstream
-          double lambda_j_neg = -1 * std::min(eigenvalues[j], 0.0);
-          tmp(i, j) *= lambda_i_pos / (lambda_j_neg + lambda_i_pos);
-        } else if (i <= k && j > k) {
-          double lambda_i_neg = -1 * std::min(eigenvalues[i], 0.0);
-=======
           double lambda_j_neg = -std::min(eigenvalues[j], 0.0);
           tmp(i, j) *= lambda_i_pos / (lambda_j_neg + lambda_i_pos);
         } else if (i <= k && j > k) {
           double lambda_i_neg = -std::min(eigenvalues[i], 0.0);
->>>>>>> Stashed changes
           double lambda_j_pos = std::max(eigenvalues[j], 0.0);
           tmp(i, j) *= lambda_j_pos / (lambda_i_neg + lambda_j_pos);
         }
