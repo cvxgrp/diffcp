@@ -17,8 +17,6 @@ The requirements are:
 * [SCS](https://github.com/bodono/scs-python)
 * Python 3.x
 
-If you require Python 2 support, please file a Github issue.
-
 ### Cone programs
 `diffcp` differentiates through a primal-dual cone program pair. The primal problem must be expressed as 
 
