@@ -64,4 +64,4 @@ def main(n=3, p=3):
 
 if __name__ == '__main__':
     np.random.seed(0)
-    main(300, 100)
+    main(50, 25)
