@@ -1,6 +1,5 @@
 import unittest
 
-import cvxpy as cp
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg as splinalg
@@ -80,6 +79,7 @@ class TestConeProgDiff(unittest.TestCase):
                 p, cone_lib._proj(x, cone_lib.POS, dual=True))
 
     def test_proj_soc(self):
+        import cvxpy as cp
         np.random.seed(0)
         n = 100
         for _ in range(15):
@@ -96,6 +96,7 @@ class TestConeProgDiff(unittest.TestCase):
                 p, cone_lib._proj(x, cone_lib.SOC, dual=True))
 
     def test_proj_psd(self):
+        import cvxpy as cp
         np.random.seed(0)
         n = 10
         for _ in range(15):
@@ -113,6 +114,7 @@ class TestConeProgDiff(unittest.TestCase):
                 cone_lib._proj(x_vec, cone_lib.PSD, dual=True), n))
 
     def test_proj_exp(self):
+        import cvxpy as cp
         np.random.seed(0)
         for _ in range(15):
             x = np.random.randn(9)
