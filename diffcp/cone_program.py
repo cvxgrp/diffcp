@@ -203,6 +203,18 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     Raises:
         SolverError: if the cone program is infeasible or unbounded.
     """
+    result = solve_and_derivative_internal(
+        A, b, c, cone_dict, warm_start=warm_start, mode=mode, **kwargs)
+    x = result["x"]
+    y = result["y"]
+    s = result["s"]
+    D = result["D"]
+    DT = result["DT"]
+    return x, y, s, D, DT
+
+
+def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
+                                  mode='lsqr', raise_on_error=True, **kwargs):
     if mode not in ["dense", "lsqr"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense' and 'lsqr'".format(mode))
@@ -225,7 +237,12 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     if status == "Solved/Inaccurate":
         warnings.warn("Solved/Inaccurate.")
     elif status != "Solved":
-        raise SolverError("Solver scs returned status %s" % status)
+        if raise_on_error:
+            raise SolverError("Solver scs returned status %s" % status)
+        else:
+            result["D"] = None
+            result["DT"] = None
+            return result
 
     x = result["x"]
     y = result["y"]
@@ -315,4 +332,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
 
         return dA, db, dc
 
-    return x, y, s, derivative, adjoint_derivative
+    result["D"] = derivative
+    result["DT"] = adjoint_derivative
+    return result
