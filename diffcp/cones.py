@@ -111,7 +111,7 @@ def _proj(x, cone, dual=False):
         # via Moreau: Pi_K*(x) = x + Pi_K(-x)
         return x + out if dual else out
     else:
-        raise NotImplementedError(f"{cone} not implemented")
+        raise NotImplementedError("%s not implemented" % cone)
 
 
 def pi(x, cones, dual=False):
