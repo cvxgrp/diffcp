@@ -1,4 +1,4 @@
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 
 from diffcp.cone_program import solve_and_derivative, \
                                 solve_and_derivative_batch, \
