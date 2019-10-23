@@ -371,15 +371,14 @@ class TestConeProgDiff(unittest.TestCase):
         np.random.seed(0)
         for m in [10, 20]:
             for n in [10, 20]:
-                A = np.random.randn(n, n)
-                b = np.random.randn(n)
+                A = np.random.randn(m, n)
+                b = np.random.randn(m)
 
                 b_copy = b.copy()
                 X = _diffcp.lsqr_sparse(sparse.csc_matrix(A), b, atol=1e-10, btol=1e-10, iter_lim=10000)
                 np.testing.assert_equal(b_copy, b)
 
-                svx = np.linalg.solve(A, b)
-                print(X.istop, X.itn)
+                svx = np.linalg.lstsq(A, b, rcond=None)[0]
                 xo = X.solution
                 np.testing.assert_allclose(svx, xo, err_msg=("istop: %d, itn: %d" % (X.istop, X.itn)))
 
