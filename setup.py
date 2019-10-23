@@ -1,10 +1,12 @@
+import distutils.sysconfig
+import distutils.version
+from glob import glob
 import os
+import platform
 from setuptools import Extension, setup, find_packages
 from setuptools.command.build_ext import build_ext
-import sys
-import setuptools
-from glob import glob
 import subprocess
+import sys
 
 
 with open("README.md", "r") as fh:
@@ -53,11 +55,28 @@ _diffcp = Extension(
         extra_compile_args=["-O3", "-std=c++11", "-march=native"] + get_openmp_flag()
 )
 
+def is_platform_mac():
+    return sys.platform == 'darwin'
+
+
+# For mac, ensure extensions are built for macos 10.9 when compiling on a
+# 10.9 system or above, overriding distutils behaviour which is to target
+# the version that python was built for. This may be overridden by setting
+# MACOSX_DEPLOYMENT_TARGET before calling setup.py. This behavior is
+# motivated by Apple dropping support for libstdc++.
+if is_platform_mac():
+    if 'MACOSX_DEPLOYMENT_TARGET' not in os.environ:
+        current_system = distutils.version.LooseVersion(platform.mac_ver()[0])
+        python_target = distutils.version.LooseVersion(
+            distutils.sysconfig.get_config_var('MACOSX_DEPLOYMENT_TARGET'))
+        if python_target < '10.9' and current_system >= '10.9':
+            os.environ['MACOSX_DEPLOYMENT_TARGET'] = '10.9'
+
 ext_modules = [_diffcp]
 
 setup(
     name='diffcp',
-    version="1.0.8",
+    version="1.0.9",
     author="Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, Walaa Moursi",
     long_description=long_description,
     long_description_content_type="text/markdown",
