@@ -8,7 +8,7 @@ install:
   - pip install nose cvxpy scs numpy scipy
   - pip install .
 script:
-  - nosetests
+  - nosetests -v --nocapture
 notifications:
   email:
     - stbarratt@gmail.com

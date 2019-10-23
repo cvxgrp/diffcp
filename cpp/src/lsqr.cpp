@@ -52,6 +52,14 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
     iter_lim = 2 * A.n;
   }
 
+  std::cout << "m: " << m << std::endl;
+  std::cout << "n: " << n << std::endl;
+  std::cout << "damp: " << damp << std::endl;
+  std::cout << "atol: " << atol << std::endl;
+  std::cout << "btol: " << btol << std::endl;
+  std::cout << "conlim: " << conlim << std::endl;
+  std::cout << "iter_lim: " << iter_lim << std::endl;
+
   assert(iter_lim > 0);
   assert(b.size() == m);
   assert(damp >= 0.0);
@@ -68,6 +76,7 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
     ctol = 1.0 / conlim;
   }
   double anorm = 0.0;
+  double acond = 0.0;
   double dampsq = damp * damp;
   double ddnorm = 0.0;
   double res2 = 0.0;
@@ -124,7 +133,6 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
   double rhs = 0.0;
   double zbar = 0.0;
   double gamma = 0.0;
-  double acond = 0.0;
   double res1 = 0.0;
   double r1sq = 0.0;
   double test1 = 0.0;
