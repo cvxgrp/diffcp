@@ -383,7 +383,7 @@ class TestConeProgDiff(unittest.TestCase):
         b = normal(size=n)
 
         b_copy = b.copy()
-        X = _diffcp.lsqr_sparse(sparse.csc_matrix(G), b, atol=1e-10, btol=1e-10)
+        X = _diffcp.lsqr_sparse(sparse.csc_matrix(G), b, atol=1e-10, btol=1e-10, iter_lim=10000)
         np.testing.assert_equal(b_copy, b)
 
         svx = np.linalg.solve(G, b)
