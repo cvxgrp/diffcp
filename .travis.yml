@@ -1,10 +1,11 @@
 language: python
 os: linux
 before_install:
-  sudo apt-get install liblapack-dev
+  - eval CC=gcc-7 && CXX=g++-7
+  - sudo apt install -y liblapack-dev
 install:
   - pip install --upgrade pip
-  - pip install nose cvxpy scs
+  - pip install nose cvxpy scs numpy scipy
   - pip install .
 script:
   - nosetests
