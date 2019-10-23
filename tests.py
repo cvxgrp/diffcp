@@ -185,8 +185,8 @@ class TestConeProgDiff(unittest.TestCase):
         np.random.seed(0)
         for _ in range(10):
             # dimension must be a multiple of 3
-            self._test_dproj(Cone(ConeType.EXP, [18]), True, 54)
-            self._test_dproj(Cone(ConeType.EXP, [18]), False, 54)
+            self._test_dproj(Cone(ConeType.EXP, [18]), True, 54, tol=1e-3)
+            self._test_dproj(Cone(ConeType.EXP, [18]), False, 54, tol=1e-3)
 
     def test_pi(self):
         np.random.seed(0)
