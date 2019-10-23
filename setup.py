@@ -33,10 +33,23 @@ class get_pybind_include(object):
         return pybind11.get_include(self.user)
 
 
-def get_openmp_flag():
+def openmp():
     try:
         flag = os.environ["OPENMP_FLAG"]
         return [flag]
+    except KeyError:
+        return []
+
+
+# TODO(akshayka): need a better solution, maybe CFLAGS, but has bad
+# interactions with macOS
+def march_native():
+    try:
+        bit = os.environ["MARCH_NATIVE"]
+        if bit == '1':
+            return ["-march=native"]
+        else:
+            return []
     except KeyError:
         return []
 
@@ -52,7 +65,7 @@ _diffcp = Extension(
             "cpp/include",
         ],
         language='c++',
-        extra_compile_args=["-O3", "-std=c++11", "-march=native"] + get_openmp_flag()
+        extra_compile_args=["-O3", "-std=c++11"] + openmp() + march_native()
 )
 
 def is_platform_mac():
@@ -76,7 +89,7 @@ ext_modules = [_diffcp]
 
 setup(
     name='diffcp',
-    version="1.0.9",
+    version="1.0.10",
     author="Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, Walaa Moursi",
     long_description=long_description,
     long_description_content_type="text/markdown",
