@@ -2,10 +2,10 @@ language: python
 os: linux
 install:
   - pip install --upgrade pip
-  - pip install pytest
+  - pip install nose
   - pip install .
 script:
-  - pytest
+  - nosetests
 notifications:
   email:
     - stbarratt@gmail.com
