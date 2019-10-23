@@ -1,14 +1,6 @@
+# TODO add osx
 matrix:
   include:
-  - os: osx
-    language: generic
-    env: PYTHON=3.5
-  - os: osx
-    language: generic
-    env: PYTHON=3.6
-  - os: osx
-    language: generic
-    env: PYTHON=3.7
   - os: linux
     dist: xenial
     language: python
@@ -35,19 +27,7 @@ matrix:
     python: "3.7"
 
 before_install:
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-        sudo apt-get install liblapack-dev;
-      elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        brew update;
-        brew install pyenv-virtualenv gcc openssl;
-        export CFLAGS="-I$(brew --prefix openssl)/include ${CFLAGS}";
-        export LDFLAGS="-L$(brew --prefix openssl)/lib ${LDFLAGS}";
-        pyenv install $PYTHON;
-        export PYENV_VERSION=$PYTHON;
-        export PATH="/Users/travis/.pyenv/shims:${PATH}";
-        pyenv virtualenv testenv;
-        python --version;
-      fi
+  - sudo apt-get install liblapack-dev;
 
 install:
   - pip install --upgrade pip
