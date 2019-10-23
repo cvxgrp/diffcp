@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/cvxgrp/diffcp.svg?branch=master)](https://travis-ci.org/cvxgrp/diffcp)
+
 # diffcp
 
 `diffcp` is a Python package for computing the derivative of a convex cone program, with respect to its problem data. The derivative is implemented as an abstract linear map, with methods for its forward application and its adjoint. 
