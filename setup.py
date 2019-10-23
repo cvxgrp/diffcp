@@ -84,7 +84,7 @@ setup(
     setup_requires=['pybind11 >= 2.4'],
     install_requires=[
         "numpy >= 1.15",
-        "scs >= 2.1.1",
+        "scs >= 2.0.2",  # 2.0.2 is the oldest version on conda forge
         "scipy >= 1.1.0",
         "pybind11 >= 2.4",
         "threadpoolctl >= 1.1"],
