@@ -65,7 +65,7 @@ _diffcp = Extension(
             "cpp/include",
         ],
         language='c++',
-        extra_compile_args=["-O3", "-std=c++11"] + openmp() + march_native()
+        extra_compile_args=["-O3", "-std=c++11", "-Wall"] + openmp() + march_native()
 )
 
 def is_platform_mac():

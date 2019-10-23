@@ -1,7 +1,6 @@
 #include "lsqr.h"
 #include <assert.h>
 #include <cmath>
-#include <iostream>
 
 inline double sign(const double &x) {
   if (x < 0) {
@@ -50,14 +49,6 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
   if (iter_lim == -1) {
     iter_lim = 2 * A.n;
   }
-
-  std::cout << "m: " << m << std::endl;
-  std::cout << "n: " << n << std::endl;
-  std::cout << "damp: " << damp << std::endl;
-  std::cout << "atol: " << atol << std::endl;
-  std::cout << "btol: " << btol << std::endl;
-  std::cout << "conlim: " << conlim << std::endl;
-  std::cout << "iter_lim: " << iter_lim << std::endl;
 
   assert(iter_lim > 0);
   assert(b.size() == m);
@@ -145,51 +136,6 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
   }
 
   while (itn < iter_lim) {
-    std::cout << std::endl << std::endl << "itn: " << itn << std::endl;
-    std::cout << "ctol: " << ctol << std::endl;
-    std::cout << "anorm: " << anorm << std::endl;
-    std::cout << "acond: " << acond << std::endl;
-    std::cout << "dampsq: " << dampsq << std::endl;
-    std::cout << "ddnorm: " << ddnorm << std::endl;
-    std::cout << "res2: " << res2 << std::endl;
-    std::cout << "xnorm: " << xnorm << std::endl;
-    std::cout << "xxnorm: " << xxnorm << std::endl;
-    std::cout << "z: " << z << std::endl;
-    std::cout << "cs2: " << cs2 << std::endl;
-    std::cout << "sn2: " << sn2 << std::endl;
-    std::cout << "alfa: " << alfa << std::endl;
-    std::cout << "beta: " << beta << std::endl;
-    std::cout << "rhobar: " << rhobar << std::endl;
-    std::cout << "phibar: " << phibar << std::endl;
-    std::cout << "bnorm: " << bnorm << std::endl;
-    std::cout << "rnorm: " << rnorm << std::endl;
-    std::cout << "r1norm: " << r1norm << std::endl;
-    std::cout << "r2norm: " << r2norm << std::endl;
-    std::cout << "arnorm: " << arnorm << std::endl;
-    std::cout << "rhobar1: " << rhobar1 << std::endl;
-    std::cout << "cs1: " << cs1 << std::endl;
-    std::cout << "sn1: " << sn1 << std::endl;
-    std::cout << "psi: " << psi << std::endl;
-    std::cout << "cs: " << cs << std::endl;
-    std::cout << "sn: " << sn << std::endl;
-    std::cout << "rho: " << rho << std::endl;
-    std::cout << "theta: " << theta << std::endl;
-    std::cout << "phi: " << phi << std::endl;
-    std::cout << "tau: " << tau << std::endl;
-    std::cout << "t1: " << t1 << std::endl;
-    std::cout << "t2: " << t2 << std::endl;
-    std::cout << "delta: " << delta << std::endl;
-    std::cout << "gambar: " << gambar << std::endl;
-    std::cout << "rhs: " << rhs << std::endl;
-    std::cout << "zbar: " << zbar << std::endl;
-    std::cout << "gamma: " << gamma << std::endl;
-    std::cout << "res1: " << res1 << std::endl;
-    std::cout << "r1sq: " << r1sq << std::endl;
-    std::cout << "test1: " << test1 << std::endl;
-    std::cout << "test2: " << test2 << std::endl;
-    std::cout << "test3: " << test3 << std::endl;
-    std::cout << "rtol: " << rtol << std::endl;
-
     itn += 1;
     u = A.matvec(v) - alfa * u;
     beta = u.norm();
