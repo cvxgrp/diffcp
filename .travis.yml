@@ -1,0 +1,12 @@
+language: python
+os: linux
+install:
+  - pip install --upgrade pip
+  - pip install pytest
+  - pip install .
+script:
+  - pytest
+notifications:
+  email:
+    - stbarratt@gmail.com
+    - akshaykagrawal7@gmail.com
