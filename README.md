@@ -7,17 +7,39 @@
 The implementation is based on the calculations in our paper [Differentiating through a cone program](http://web.stanford.edu/~boyd/papers/diff_cone_prog.html).
 
 ### Installation
-`diffcp` is available on Pip.
+`diffcp` is available on PyPI, as a source distribution. Install it with
 
-```python
+```bash
 pip install diffcp
 ```
 
-The requirements are:
-* [NumPy](https://github.com/numpy/numpy)
-* [SciPy](https://github.com/scipy/scipy)
-* [SCS](https://github.com/bodono/scs-python)
+You will need a C++11-capable compiler to build `diffcp`.
+
+`diffcp` requires:
+* [NumPy](https://github.com/numpy/numpy) >= 1.15
+* [SciPy](https://github.com/scipy/scipy) >= 1.10
+* [SCS](https://github.com/bodono/scs-python) >= 2.0.2
+* [pybind11](https://github.com/pybind/pybind11/tree/stable) >= 2.4
+* [threadpoolctl](https://github.com/joblib/threadpoolctl) >= 1.1
 * Python 3.x
+
+`diffcp` uses Eigen; Eigen operations can be automatically vectorized by compilers. To enable vectorization, install with
+
+```bash
+MARCH_NATIVE=1 pip install diffcp
+```
+
+OpenMP can be enabled by passing extra arguments to your compiler. For example, on linux, you can tell gcc to activate the OpenMP extension by specifying the flag "-fopenmp":
+
+```bash
+OPENMP_FLAG="-fopenmp" pip install diffcp
+```
+
+To enable both vectorization and OpenMP (on linux), use
+
+```bash
+MARCH_NATIVE=1 OPENMP_FLAG="-fopenmp" pip install diffcp
+```
 
 ### Cone programs
 `diffcp` differentiates through a primal-dual cone program pair. The primal problem must be expressed as 
