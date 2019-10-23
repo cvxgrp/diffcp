@@ -388,7 +388,7 @@ class TestConeProgDiff(unittest.TestCase):
 
         svx = np.linalg.solve(G, b)
         xo = X.solution
-        np.testing.assert_allclose(svx, xo)
+        np.testing.assert_allclose(svx, xo, err_msg=str(svx))
 
 if __name__ == '__main__':
     unittest.main()
