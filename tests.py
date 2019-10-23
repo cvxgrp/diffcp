@@ -369,19 +369,17 @@ class TestConeProgDiff(unittest.TestCase):
     
     def test_lsqr(self):
         np.random.seed(0)
-        for m in [10, 20]:
-            for n in [10, 20]:
-                A = np.random.randn(m, n)
-                b = np.random.randn(m)
+        A = np.random.randn(20, 10)
+        b = np.random.randn(20)
 
-                b_copy = b.copy()
-                X = _diffcp.lsqr_sparse(sparse.csc_matrix(A), b, atol=1e-10, btol=1e-10, iter_lim=10000)
-                np.testing.assert_equal(b_copy, b)
+        b_copy = b.copy()
+        X = _diffcp.lsqr_sparse(sparse.csc_matrix(A), b, atol=1e-10, btol=1e-10, iter_lim=4)
+        np.testing.assert_equal(b_copy, b)
 
-                svx = np.linalg.lstsq(A, b, rcond=None)[0]
-                xo = X.solution
-                print("istop: %d, itn: %d" % (X.istop, X.itn))
-                np.testing.assert_allclose(svx, xo, err_msg=("istop: %d, itn: %d" % (X.istop, X.itn)))
+        svx = np.linalg.lstsq(A, b, rcond=None)[0]
+        xo = X.solution
+        print("istop: %d, itn: %d" % (X.istop, X.itn))
+        np.testing.assert_allclose(svx, xo, err_msg=("istop: %d, itn: %d" % (X.istop, X.itn)))
 
 if __name__ == '__main__':
     unittest.main()

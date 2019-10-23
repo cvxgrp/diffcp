@@ -1,8 +1,7 @@
 #include "lsqr.h"
 #include <assert.h>
+#include <cmath>
 #include <iostream>
-#include <math.h>
-#include <thread>
 
 inline double sign(const double &x) {
   if (x < 0) {
@@ -18,19 +17,19 @@ inline void _sym_ortho(double a, double b, double &c, double &s, double &r) {
   if (b == 0) {
     c = sign(a);
     s = 0.0;
-    r = abs(a);
+    r = std::abs(a);
   } else if (a == 0) {
     c = 0.0;
     s = sign(b);
-    r = abs(b);
-  } else if (abs(b) > abs(a)) {
+    r = std::abs(b);
+  } else if (std::abs(b) > std::abs(a)) {
     double tau = a / b;
-    s = sign(b) / sqrt(1 + tau * tau);
+    s = sign(b) / std::sqrt(1 + tau * tau);
     c = s * tau;
     r = b / s;
   } else {
     double tau = b / a;
-    c = sign(a) / sqrt(1 + tau * tau);
+    c = sign(a) / std::sqrt(1 + tau * tau);
     s = c * tau;
     r = a / c;
   }
@@ -197,7 +196,7 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
 
     if (beta > 0) {
       u /= beta;
-      anorm = sqrt(anorm * anorm + alfa * alfa + beta * beta + damp * damp);
+      anorm = std::sqrt(anorm * anorm + alfa * alfa + beta * beta + damp * damp);
       v = A.rmatvec(u) - beta * v;
       alfa = v.norm();
       if (alfa > 0) {
@@ -205,7 +204,7 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
       }
     }
 
-    rhobar1 = sqrt(rhobar * rhobar + damp * damp);
+    rhobar1 = std::sqrt(rhobar * rhobar + damp * damp);
     cs1 = rhobar / rhobar1;
     sn1 = damp / rhobar1;
     psi = sn1 * phibar;
@@ -232,21 +231,21 @@ LsqrResult lsqr(const LinearOperator &A, const Vector &b, const double damp,
     gambar = -cs2 * rho;
     rhs = phi - delta * z;
     zbar = rhs / gambar;
-    xnorm = sqrt(xxnorm + zbar * zbar);
-    gamma = sqrt(gambar * gambar + theta * theta);
+    xnorm = std::sqrt(xxnorm + zbar * zbar);
+    gamma = std::sqrt(gambar * gambar + theta * theta);
     cs2 = gambar / gamma;
     sn2 = theta / gamma;
     z = rhs / gamma;
     xxnorm = xxnorm + z * z;
 
-    acond = anorm * sqrt(ddnorm);
+    acond = anorm * std::sqrt(ddnorm);
     res1 = phibar * phibar;
     res2 = res2 + psi * psi;
-    rnorm = sqrt(res1 + res2);
-    arnorm = alfa * abs(tau);
+    rnorm = std::sqrt(res1 + res2);
+    arnorm = alfa * std::abs(tau);
 
     r1sq = rnorm * rnorm - dampsq * xxnorm;
-    r1norm = sqrt(abs(r1sq));
+    r1norm = std::sqrt(std::abs(r1sq));
     if (r1sq < 0) {
       r1norm = -r1norm;
     }
