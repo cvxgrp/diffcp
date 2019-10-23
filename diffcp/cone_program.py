@@ -91,6 +91,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
                     zip(As, bs, cs, cone_dicts, warm_starts)]
         with threadpool_limits(limits=1):
             results = pool.starmap(solve_and_derivative_wrapper, args)
+        pool.close()
         xs = [r[0] for r in results]
         ys = [r[1] for r in results]
         ss = [r[2] for r in results]
@@ -116,21 +117,24 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
                 dcs += [dc]
             return dAs, dbs, dcs
     else:
-        pool = ThreadPool(processes=n_jobs_backward)
 
         def D_batch(dAs, dbs, dcs, **kwargs):
+            pool = ThreadPool(processes=n_jobs_backward)
             def Di(i):
                 return Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
             results = pool.map(Di, range(batch_size))
+            pool.close()
             dxs = [r[0] for r in results]
             dys = [r[1] for r in results]
             dss = [r[2] for r in results]
             return dxs, dys, dss
 
         def DT_batch(dxs, dys, dss, **kwargs):
+            pool = ThreadPool(processes=n_jobs_backward)
             def DTi(i):
                 return DTs[i](dxs[i], dys[i], dss[i], **kwargs)
             results = pool.map(DTi, range(batch_size))
+            pool.close()
             dAs = [r[0] for r in results]
             dbs = [r[1] for r in results]
             dcs = [r[2] for r in results]
