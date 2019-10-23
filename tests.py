@@ -378,7 +378,6 @@ class TestConeProgDiff(unittest.TestCase):
 
         svx = np.linalg.lstsq(A, b, rcond=None)[0]
         xo = X.solution
-        print("istop: %d, itn: %d" % (X.istop, X.itn))
         np.testing.assert_allclose(svx, xo, err_msg=("istop: %d, itn: %d" % (X.istop, X.itn)))
 
 if __name__ == '__main__':
