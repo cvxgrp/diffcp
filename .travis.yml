@@ -1,8 +1,10 @@
 language: python
 os: linux
+before_install:
+  sudo apt-get install liblapack-dev
 install:
   - pip install --upgrade pip
-  - pip install nose cvxpy
+  - pip install nose cvxpy scs
   - pip install .
 script:
   - nosetests
