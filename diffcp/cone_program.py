@@ -175,7 +175,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         then the second-order cone, the PSD cone, the exponential cone, and
         finally the exponential dual cone. PSD matrix variables must be
         vectorized by scaling the off-diagonal entries by sqrt(2) and stacking
-        the lower triangular part in column-major order.
+        the lower triangular part in column-major order. WARNING: This
+        function eliminates zero entries in A.
       b: A NumPy array representing the offset.
       c: A NumPy array representing the objective function.
       cone_dict: A dictionary with keys corresponding to cones, values
@@ -222,11 +223,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
     if mode not in ["dense", "lsqr"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense' and 'lsqr'".format(mode))
+    
+    rows, cols = A.nonzero()
 
-    A_eliminated = A.copy()
-    A_eliminated.eliminate_zeros()
+    A.eliminate_nonzeros()
     data = {
-        "A": A_eliminated,
+        "A": A,
         "b": b,
         "c": c
     }
@@ -263,8 +265,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
     u, v, w = z
 
     Q = sparse.bmat([
-        [None, A_eliminated.T, np.expand_dims(c, - 1)],
-        [-A_eliminated, None, np.expand_dims(b, -1)],
+        [None, A.T, np.expand_dims(c, - 1)],
+        [-A, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
 
@@ -278,7 +280,6 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
         MT = M.transpose()
 
     pi_z = pi(z, cones)
-    rows, cols = A.nonzero()
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
