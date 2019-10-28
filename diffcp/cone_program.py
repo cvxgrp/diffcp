@@ -226,7 +226,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
     
     rows, cols = A.nonzero()
 
-    A.eliminate_nonzeros()
+    A.eliminate_zeros()
     data = {
         "A": A,
         "b": b,
