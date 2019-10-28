@@ -223,8 +223,10 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense' and 'lsqr'".format(mode))
 
+    A_eliminated = A.copy()
+    A_eliminated.eliminate_zeros()
     data = {
-        "A": A,
+        "A": A_eliminated,
         "b": b,
         "c": c
     }
@@ -261,8 +263,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
     u, v, w = z
 
     Q = sparse.bmat([
-        [None, A.T, np.expand_dims(c, - 1)],
-        [-A, None, np.expand_dims(b, -1)],
+        [None, A_eliminated.T, np.expand_dims(c, - 1)],
+        [-A_eliminated, None, np.expand_dims(b, -1)],
         [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
     ])
 
