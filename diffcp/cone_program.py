@@ -175,7 +175,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         then the second-order cone, the PSD cone, the exponential cone, and
         finally the exponential dual cone. PSD matrix variables must be
         vectorized by scaling the off-diagonal entries by sqrt(2) and stacking
-        the lower triangular part in column-major order.
+        the lower triangular part in column-major order. WARNING: This
+        function eliminates zero entries in A.
       b: A NumPy array representing the offset.
       c: A NumPy array representing the objective function.
       cone_dict: A dictionary with keys corresponding to cones, values
@@ -222,12 +223,28 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
     if mode not in ["dense", "lsqr"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense' and 'lsqr'".format(mode))
+    
+    if np.isnan(A.data).any():
+        raise RuntimeError("Found a NaN in A.")
+
+    # set explicit 0s in A to np.nan
+    A.data[A.data == 0] = np.nan
+
+    # compute rows and cols of nonzeros in A
+    rows, cols = A.nonzero()
+
+    # reset np.nan entries in A to 0.0
+    A.data[np.isnan(A.data)] = 0.0
+
+    # eliminate explicit zeros in A, we no longer need them
+    A.eliminate_zeros()
 
     data = {
         "A": A,
         "b": b,
         "c": c
     }
+
     if warm_start is not None:
         data["x"] = warm_start[0]
         data["y"] = warm_start[1]
@@ -276,7 +293,6 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
         MT = M.transpose()
 
     pi_z = pi(z, cones)
-    rows, cols = A.nonzero()
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
