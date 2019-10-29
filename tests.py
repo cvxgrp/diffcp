@@ -379,6 +379,27 @@ class TestConeProgDiff(unittest.TestCase):
         svx = np.linalg.lstsq(A, b, rcond=None)[0]
         xo = X.solution
         np.testing.assert_allclose(svx, xo, err_msg=("istop: %d, itn: %d" % (X.istop, X.itn)))
+    
+    def test_get_nonzeros(self):
+        np.random.seed(0)
+        A = sparse.csc_matrix(np.random.randn(4, 3))
+        self.assertEqual(A.nnz, 4*3)
+        A[1, 1] = 0.0
+        self.assertEqual(A.nnz, 4*3)
+        import copy
+        A_copy = copy.deepcopy(A)
+        A.data[A.data == 0.0] = np.nan
+        rows, cols = A.nonzero()
+        self.assertEqual(rows.size, 4*3)
+        self.assertEqual(cols.size, 4*3)
+        A.data[np.isnan(A.data)] = 0.0
+        np.testing.assert_equal(A.data, A_copy.data)
+        self.assertEqual(A.nnz, 4*3)
+        self.assertEqual(A.nonzero()[0].size, 4*3-1)
+        A.eliminate_zeros()
+        self.assertEqual(A.nnz, 4*3-1)
+
+
 
 if __name__ == '__main__':
     unittest.main()
