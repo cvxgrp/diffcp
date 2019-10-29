@@ -224,14 +224,27 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense' and 'lsqr'".format(mode))
     
+    if np.isnan(A.data).any():
+        raise RuntimeError("Found a NaN in A.")
+
+    # set explicit 0s in A to np.nan
+    A.data[A.data == 0] = np.nan
+
+    # compute rows and cols of nonzeros in A
     rows, cols = A.nonzero()
 
+    # reset np.nan entries in A to 0.0
+    A.data[np.isnan(A.data)] = 0.0
+
+    # eliminate explicit zeros in A, we no longer need them
     A.eliminate_zeros()
+
     data = {
         "A": A,
         "b": b,
         "c": c
     }
+
     if warm_start is not None:
         data["x"] = warm_start[0]
         data["y"] = warm_start[1]
