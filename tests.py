@@ -16,7 +16,8 @@ CPP_CONES_TO_SCS = {
     ConeType.POS: "l",
     ConeType.SOC: "q",
     ConeType.PSD: "s",
-    ConeType.EXP: "ep"
+    ConeType.EXP: "ep",
+    ConeType.EXP_DUAL: "ed"
 }
 
 class TestConeProgDiff(unittest.TestCase):
@@ -130,7 +131,7 @@ class TestConeProgDiff(unittest.TestCase):
             p = cone_lib._proj(x, cone_lib.EXP, dual=False)
             np.testing.assert_allclose(p, var.value, atol=1e-4, rtol=1e-4)
             # x + Pi_{exp}(-x) = Pi_{exp_dual}(x)
-            p_dual = cone_lib._proj(x, cone_lib.EXP, dual=True)
+            p_dual = cone_lib._proj(x, cone_lib.EXP_DUAL, dual=False)
             var = cp.Variable(9)
             constr = [cp.constraints.ExpCone(var[0], var[1], var[2])]
             constr.append(cp.constraints.ExpCone(var[3], var[4], var[5]))
@@ -188,6 +189,13 @@ class TestConeProgDiff(unittest.TestCase):
             self._test_dproj(Cone(ConeType.EXP, [18]), True, 54, tol=1e-3)
             self._test_dproj(Cone(ConeType.EXP, [18]), False, 54, tol=1e-3)
 
+    def test_dproj_exp_dual(self):
+        np.random.seed(0)
+        for _ in range(10):
+            # dimension must be a multiple of 3
+            self._test_dproj(Cone(ConeType.EXP_DUAL, [18]), True, 54, tol=1e-3)
+            self._test_dproj(Cone(ConeType.EXP_DUAL, [18]), False, 54, tol=1e-3)
+
     def test_pi(self):
         np.random.seed(0)
         for _ in range(10):
@@ -200,9 +208,9 @@ class TestConeProgDiff(unittest.TestCase):
             exp_dim = np.random.randint(3, 18)
             cones = [(cone_lib.ZERO, zero_dim), (cone_lib.POS, pos_dim),
                      (cone_lib.SOC, soc_dim), (cone_lib.PSD, psd_dim),
-                     (cone_lib.EXP, exp_dim)]
+                     (cone_lib.EXP, exp_dim), (cone_lib.EXP_DUAL, exp_dim)]
             size = zero_dim + pos_dim + sum(soc_dim) + sum(
-                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + 3 * exp_dim
+                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + 2 * 3 * exp_dim
             x = np.random.randn(size)
             for dual in [False, True]:
                 proj = cone_lib.pi(x, cones, dual=dual)
@@ -230,8 +238,13 @@ class TestConeProgDiff(unittest.TestCase):
                                                               dual=dual))
                     offset += dim
 
+                dim = 3 * exp_dim
+                np.testing.assert_allclose(proj[offset:offset + dim],
+                                           cone_lib._proj(x[offset:offset + dim], cone_lib.EXP, dual=dual))
+                offset += dim
+
                 np.testing.assert_allclose(proj[offset:],
-                                           cone_lib._proj(x[offset:], cone_lib.EXP, dual=dual))
+                                           cone_lib._proj(x[offset:], cone_lib.EXP_DUAL, dual=dual))
 
     def test_dpi(self):
         np.random.seed(0)
@@ -245,9 +258,9 @@ class TestConeProgDiff(unittest.TestCase):
             exp_dim = np.random.randint(3, 18)
             cones = [(cone_lib.ZERO, zero_dim), (cone_lib.POS, pos_dim),
                      (cone_lib.SOC, soc_dim), (cone_lib.PSD, psd_dim),
-                     (cone_lib.EXP, exp_dim)]
+                     (cone_lib.EXP, exp_dim), (cone_lib.EXP_DUAL, exp_dim)]
             size = zero_dim + pos_dim + sum(soc_dim) + sum(
-                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + 3 * exp_dim
+                [cone_lib.vec_psd_dim(d) for d in psd_dim]) + 2 * 3 * exp_dim
             x = np.random.randn(size)
 
             for dual in [False, True]:

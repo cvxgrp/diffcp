@@ -11,10 +11,9 @@ SOC = "q"
 PSD = "s"
 EXP = "ep"
 EXP_DUAL = "ed"
-POWER = "p"
 
 # The ordering of CONES matches SCS.
-CONES = [ZERO, POS, SOC, PSD, EXP, EXP_DUAL, POWER]
+CONES = [ZERO, POS, SOC, PSD, EXP, EXP_DUAL]
 
 # Map from Python cones to CPP format
 CONE_MAP = {
@@ -22,7 +21,8 @@ CONE_MAP = {
     "l": ConeType.POS,
     "q": ConeType.SOC,
     "s": ConeType.PSD,
-    "ep": ConeType.EXP
+    "ep": ConeType.EXP,
+    "ed": ConeType.EXP_DUAL
 }
 
 
@@ -79,6 +79,10 @@ def vec_symm(X):
 
 def _proj(x, cone, dual=False):
     """Returns the projection of x onto a cone or its dual cone."""
+    if cone == EXP_DUAL:
+        cone = EXP
+        dual = not dual
+
     if cone == ZERO:
         return x if dual else np.zeros(x.shape)
     elif cone == POS:
@@ -132,7 +136,7 @@ def pi(x, cones, dual=False):
         for dim in sz:
             if cone == PSD:
                 dim = vec_psd_dim(dim)
-            elif cone == EXP:
+            elif cone == EXP or cone == EXP_DUAL:
                 dim *= 3
             projection[offset:offset + dim] = _proj(
                 x[offset:offset + dim], cone, dual=dual)

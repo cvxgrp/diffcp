@@ -195,7 +195,9 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
       double t = 0;
       double rs[3] = {x_i[0], x_i[1], x_i[2]};
       int ret = _proj_exp_cone(rs, &t);
-      assert(ret == 0);
+      if (ret != 0) {
+        throw "Projection onto exponential cone failed.";
+      }
       double r = rs[0];
       double s = rs[1];
       if (s == 0) {
@@ -324,9 +326,12 @@ LinearOperator _dprojection(const Vector &x, ConeType type, bool dual) {
     return _dprojection_soc(x);
   } else if (type == PSD) {
     return _dprojection_psd(x);
-  } else {
-    assert(type == EXP);
+  } else if (type == EXP) {
     return _dprojection_exp(x, dual);
+  } else if (type == EXP_DUAL) {
+    return _dprojection_exp(x, !dual);
+  } else {
+    throw "Cone not supported.";
   }
 }
 
@@ -345,6 +350,8 @@ LinearOperator dprojection(const Vector &x, const std::vector<Cone> &cones,
       if (type == PSD) {
         size = vectorized_psd_size(size);
       } else if (type == EXP) {
+        size *= 3;
+      } else if (type == EXP_DUAL) {
         size *= 3;
       }
       lin_ops.emplace_back(_dprojection(x.segment(offset, size), type, dual));
@@ -377,6 +384,8 @@ int _get_D_size(const std::vector<Cone> &cones) {
         size = vectorized_psd_size(size);
       } else if (type == EXP) {
         size *= 3;
+      } else if (type == EXP_DUAL) {
+        size *= 3;
       }
       offset += size;
     }
@@ -407,9 +416,14 @@ void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type,
   } else if (type == PSD) {
     // TODO: Should be able to manually implement without using the linop.
     _op_into_dense(D_block, _dprojection_psd(x));
-  } else {
-    assert(type == EXP);
+  } else if (type == EXP) {
+    // TODO: Should be able to do this with one solve
     _op_into_dense(D_block, _dprojection_exp(x, dual));
+  } else if (type == EXP_DUAL) {
+    // TODO: Should be able to do this with one solve
+    _op_into_dense(D_block, _dprojection_exp(x, !dual));
+  } else {
+    throw "Cone not supported.";
   }
 }
 
@@ -429,6 +443,8 @@ Matrix dprojection_dense(const Vector &x, const std::vector<Cone> &cones,
       if (type == PSD) {
         size = vectorized_psd_size(size);
       } else if (type == EXP) {
+        size *= 3;
+      } else if (type == EXP_DUAL) {
         size *= 3;
       }
       MatrixRef D_block = D.block(offset, offset, size, size);

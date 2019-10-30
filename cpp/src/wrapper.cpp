@@ -25,7 +25,8 @@ PYBIND11_MODULE(_diffcp, m) {
       .value("POS", ConeType::POS)
       .value("SOC", ConeType::SOC)
       .value("PSD", ConeType::PSD)
-      .value("EXP", ConeType::EXP);
+      .value("EXP", ConeType::EXP)
+      .value("EXP_DUAL", ConeType::EXP_DUAL);
   py::class_<LsqrResult>(m, "LsqrResult")
       .def_readonly("solution", &LsqrResult::x)
       .def_readonly("istop", &LsqrResult::istop)
