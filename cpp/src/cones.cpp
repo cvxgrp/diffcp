@@ -3,6 +3,7 @@
 #include <functional>
 #include <numeric>
 #include <string.h>
+#include <stdexcept>
 
 #include "cones.h"
 
@@ -196,7 +197,7 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
       double rs[3] = {x_i[0], x_i[1], x_i[2]};
       int ret = _proj_exp_cone(rs, &t);
       if (ret != 0) {
-        throw "Projection onto exponential cone failed.";
+        throw std::runtime_error("Projection onto exponential cone failed.");
       }
       double r = rs[0];
       double s = rs[1];
@@ -331,7 +332,7 @@ LinearOperator _dprojection(const Vector &x, ConeType type, bool dual) {
   } else if (type == EXP_DUAL) {
     return _dprojection_exp(x, !dual);
   } else {
-    throw "Cone not supported.";
+    throw std::invalid_argument("Cone not supported.");
   }
 }
 
@@ -423,7 +424,7 @@ void _dprojection_dense(MatrixRef &D_block, const Vector &x, ConeType type,
     // TODO: Should be able to do this with one solve
     _op_into_dense(D_block, _dprojection_exp(x, !dual));
   } else {
-    throw "Cone not supported.";
+    throw std::invalid_argument("Cone not supported.");
   }
 }
 
