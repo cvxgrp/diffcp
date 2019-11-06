@@ -1,0 +1,35 @@
+environment:
+  matrix:
+    - platform: x64
+      CONDAPATH: C:\Miniconda-x64
+      PYVER: 3.5
+
+    - platform: x86
+      CONDAPATH: C:\Miniconda
+      PYVER: 3.5
+
+  - pip install --upgrade pip
+  - pip install nose cvxpy scs numpy scipy
+  - pip install .
+
+build_script:
+  - '%CONDAPATH%\Scripts\conda config --set always_yes yes'
+  - '%CONDAPATH%\Scripts\conda update conda'
+  - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER%'
+  - '%CONDAPATH%\Scripts\activate C:\pythontest'
+  - '%CONDAPATH%\Scripts\conda install -y numpy scipy nose
+  - '%CONDAPATH%\Scripts\conda install -y scs cvxpy -c conda-forge'
+  - where python
+  - python setup.py install
+
+test_script:
+  - nosetests
+
+notifications:
+  - provider: Email
+    to:
+      - stbarratt@gmail.com
+      - akshaykagrawal7@gmail.com
+    on_build_success: false
+    on_build_failure: true
+    on_build_status_changed: true
