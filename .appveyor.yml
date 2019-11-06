@@ -8,10 +8,6 @@ environment:
       CONDAPATH: C:\Miniconda
       PYVER: 3.5
 
-  - pip install --upgrade pip
-  - pip install nose cvxpy scs numpy scipy
-  - pip install .
-
 build_script:
   - '%CONDAPATH%\Scripts\conda config --set always_yes yes'
   - '%CONDAPATH%\Scripts\conda update conda'
