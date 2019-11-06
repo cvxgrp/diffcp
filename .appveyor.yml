@@ -2,11 +2,11 @@ environment:
   matrix:
     - platform: x64
       CONDAPATH: C:\Miniconda-x64
-      PYVER: 3.5
+      PYVER: 3.6
 
     - platform: x86
       CONDAPATH: C:\Miniconda
-      PYVER: 3.5
+      PYVER: 3.6
 
 build_script:
   - '%CONDAPATH%\Scripts\conda config --set always_yes yes'
