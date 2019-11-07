@@ -14,8 +14,9 @@ build_script:
   - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER%'
   - '%CONDAPATH%\Scripts\activate C:\pythontest'
   - where python
+  - '%CONDAPATH%\Scripts\conda install -y numpy scipy'
   - python -m pip install --upgrade pip
-  - python -m pip install nose cvxpy scs numpy scipy
+  - python -m pip install nose cvxpy scs
   - python -m pip install .
 
 test_script:
