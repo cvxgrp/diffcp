@@ -11,6 +11,8 @@ environment:
 build_script:
   - '%CONDAPATH%\Scripts\conda config --set always_yes yes'
   - '%CONDAPATH%\Scripts\conda update conda'
+  - '%CONDAPATH%\Scripts\conda --add channels conda-forge'
+  - '%CONDAPATH%\Scripts\conda --add channels oxfordcontrol'
   - '%CONDAPATH%\Scripts\conda create -n pythontest -y python=%PYVER% mkl=2018.0.3 pip nose numpy scipy cvxpy scs'
   - '%CONDAPATH%\Scripts\activate pythontest'
   - where python
