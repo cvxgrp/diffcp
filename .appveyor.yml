@@ -11,13 +11,11 @@ environment:
 build_script:
   - '%CONDAPATH%\Scripts\conda config --set always_yes yes'
   - '%CONDAPATH%\Scripts\conda update conda'
-  - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER%'
-  - '%CONDAPATH%\Scripts\activate C:\pythontest'
+  - '%CONDAPATH%\Scripts\conda create -n pythontest -y python=%PYVER% mkl=2018.0.3 pip nose numpy scipy cvxpy scs'
+  - '%CONDAPATH%\Scripts\activate pythontest'
   - where python
-  - '%CONDAPATH%\Scripts\conda install -y numpy scipy'
-  - python -m pip install --upgrade pip
-  - python -m pip install nose cvxpy scs
-  - python -m pip install .
+  - pip install --upgrade pip
+  - pip install .
 
 test_script:
   - nosetests
