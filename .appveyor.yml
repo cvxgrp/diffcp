@@ -13,10 +13,10 @@ build_script:
   - '%CONDAPATH%\Scripts\conda update conda'
   - '%CONDAPATH%\Scripts\conda create -p C:\pythontest python=%PYVER%'
   - '%CONDAPATH%\Scripts\activate C:\pythontest'
-  - '%CONDAPATH%\Scripts\conda install -y numpy scipy nose'
-  - '%CONDAPATH%\Scripts\conda install -y scs cvxpy -c conda-forge'
   - where python
-  - python setup.py install
+  - python -m pip install --upgrade pip
+  - python -m pip install nose cvxpy scs numpy scipy
+  - python -m pip install .
 
 test_script:
   - nosetests
