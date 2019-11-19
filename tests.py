@@ -311,9 +311,9 @@ class TestConeProgDiff(unittest.TestCase):
             x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
                 A + dA, b + db, c + dc, cone_dims, eps=1e-10)
 
-            np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
-            np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
-            np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
+            np.testing.assert_allclose(x_pert - x, dx, atol=1e-7)
+            np.testing.assert_allclose(y_pert - y, dy, atol=1e-7)
+            np.testing.assert_allclose(s_pert - s, ds, atol=1e-7)
 
             x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
                 A, b, c, cone_dims, eps=1e-10, mode=mode)
