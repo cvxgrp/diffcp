@@ -251,8 +251,6 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
         data["s"] = warm_start[2]
 
     kwargs.setdefault("verbose", False)
-    kwargs.setdefault("acceleration_lookback", 0)
-    kwargs.setdefault("max_iters", 10000)
     result = scs.solve(data, cone_dict, **kwargs)
 
     status = result["info"]["status"]
