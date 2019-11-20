@@ -250,7 +250,6 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
         data["y"] = warm_start[1]
         data["s"] = warm_start[2]
 
-
     kwargs.setdefault("verbose", False)
     result = scs.solve(data, cone_dict, **kwargs)
 
