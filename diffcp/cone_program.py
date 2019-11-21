@@ -30,6 +30,7 @@ def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, mode, kwargs):
 
 
 def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs_backward=-1,
+                               pool_forward=None, pool_backward=None,
                                mode="lsqr", warm_starts=None, **kwargs):
     """
     Solves a batch of cone programs and returns a function that
@@ -44,10 +45,12 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
         bs - A list of b arrays.
         cs - A list of c arrays.
         cone_dicts - A list of dictionaries describing the cone.
-        n_jobs_forward - Number of jobs to use in the forward pass. n_jobs_forward = 1
+        n_jobs_forward - Number of jobs to use in the ThreadPool in the forward pass. n_jobs_forward = 1
             means serial and n_jobs_forward = -1 defaults to the number of CPUs (default=-1).
-        n_jobs_backward - Number of jobs to use in the backward pass. n_jobs_backward = 1
+        n_jobs_backward - Number of jobs to use in the ThreadPool in the backward pass. n_jobs_backward = 1
             means serial and n_jobs_backward = -1 defaults to the number of CPUs (default=-1).
+        pool_forward - ThreadPool to use in the forward pass. Overrides n_jobs_forward (default=None).
+        pool_backward - ThreadPool to use in the backward pass. Overrides n_jobs_backward (default=None).
         mode - Differentiation mode in ["lsqr", "dense"].
         warm_starts - A list of warm starts.
         kwargs - kwargs sent to scs.
@@ -73,7 +76,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
     n_jobs_forward = min(batch_size, n_jobs_forward)
     n_jobs_backward = min(batch_size, n_jobs_backward)
 
-    if n_jobs_forward == 1:
+    if n_jobs_forward == 1 and pool_forward is None:
         # serial
         xs, ys, ss, Ds, DTs = [], [], [], [], []
         for i in range(batch_size):
@@ -85,20 +88,23 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
             Ds += [D]
             DTs += [DT]
     else:
-        # thread pool
-        pool = ThreadPool(processes=n_jobs_forward)
         args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in \
                     zip(As, bs, cs, cone_dicts, warm_starts)]
-        with threadpool_limits(limits=1):
-            results = pool.starmap(solve_and_derivative_wrapper, args)
-        pool.close()
+        if pool_forward is None:
+            pool = ThreadPool(processes=n_jobs_forward)
+            with threadpool_limits(limits=1):
+                results = pool.starmap(solve_and_derivative_wrapper, args)
+            pool.close()
+        else:
+            with threadpool_limits(limits=1):
+                results = pool_forward.starmap(solve_and_derivative_wrapper, args)
         xs = [r[0] for r in results]
         ys = [r[1] for r in results]
         ss = [r[2] for r in results]
         Ds = [r[3] for r in results]
         DTs = [r[4] for r in results]
 
-    if n_jobs_backward == 1:
+    if n_jobs_backward == 1 and pool_backward is None:
         def D_batch(dAs, dbs, dcs, **kwargs):
             dxs, dys, dss = [], [], []
             for i in range(batch_size):
@@ -117,24 +123,29 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
                 dcs += [dc]
             return dAs, dbs, dcs
     else:
-
         def D_batch(dAs, dbs, dcs, **kwargs):
-            pool = ThreadPool(processes=n_jobs_backward)
             def Di(i):
                 return Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
-            results = pool.map(Di, range(batch_size))
-            pool.close()
+            if pool_backward is None:
+                pool = ThreadPool(processes=n_jobs_backward)
+                results = pool.map(Di, range(batch_size))
+                pool.close()
+            else:
+                results = pool_backward.map(Di, range(batch_size))
             dxs = [r[0] for r in results]
             dys = [r[1] for r in results]
             dss = [r[2] for r in results]
             return dxs, dys, dss
 
         def DT_batch(dxs, dys, dss, **kwargs):
-            pool = ThreadPool(processes=n_jobs_backward)
             def DTi(i):
                 return DTs[i](dxs[i], dys[i], dss[i], **kwargs)
-            results = pool.map(DTi, range(batch_size))
-            pool.close()
+            if pool_backward is None:
+                pool = ThreadPool(processes=n_jobs_backward)
+                results = pool.map(DTi, range(batch_size))
+                pool.close()
+            else:
+                results = pool_backward.map(DTi, range(batch_size))
             dAs = [r[0] for r in results]
             dbs = [r[1] for r in results]
             dcs = [r[2] for r in results]

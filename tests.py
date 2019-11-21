@@ -10,6 +10,7 @@ import diffcp.utils as utils
 import _diffcp
 from _diffcp import Cone, ConeType
 
+from multiprocessing.pool import ThreadPool
 
 CPP_CONES_TO_SCS = {
     ConeType.ZERO: "f",
@@ -415,7 +416,30 @@ class TestConeProgDiff(unittest.TestCase):
         self.assertEqual(A.nonzero()[0].size, 4*3-1)
         A.eliminate_zeros()
         self.assertEqual(A.nnz, 4*3-1)
+    
+    def test_pool(self):
+        np.random.seed(0)
+        m = 20
+        n = 10
+        As, bs, cs, cone_dicts = [], [], [], []
+        results = []
 
+        for _ in range(4):
+            A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
+            As += [A]
+            bs += [b]
+            cs += [c]
+            cone_dicts += [cone_dims]
+            results.append(cone_prog.solve_and_derivative(A, b, c, cone_dims))
+
+        pool_forward = ThreadPool(4)
+        pool_backward = ThreadPool(4)
+
+        xs, ys, ss, D_batch, DT_batch = cone_prog.solve_and_derivative_batch(
+            As, bs, cs, cone_dicts, pool_forward=pool_forward, pool_backward=pool_backward)
+
+        D_batch(As, bs, cs)
+        DT_batch(xs, ys, ss)
 
 
 if __name__ == '__main__':
