@@ -100,8 +100,7 @@ setup(
         "scs >= 2.0.2",  # 2.0.2 is the oldest version on conda forge
         "scipy >= 1.1.0",
         "pybind11 >= 2.4",
-        "threadpoolctl >= 1.1",
-        "cvxpy >= 1.1.0a1"],
+        "threadpoolctl >= 1.1"],
     url="http://github.com/cvxgrp/diffcp/",
     ext_modules=ext_modules,
     license="Apache License, Version 2.0",
