@@ -100,7 +100,7 @@ def _proj(x, cone, dual=False):
     elif cone == PSD:
         dim = psd_dim(x.size)
         X = unvec_symm(x, dim)
-        lambd, Q = np.linalg.eig(X)
+        lambd, Q = np.linalg.eigh(X)
         return vec_symm(Q @ sparse.diags(np.maximum(lambd, 0)) @ Q.T)
     elif cone == EXP:
         num_cones = int(x.size / 3)
