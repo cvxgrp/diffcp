@@ -31,7 +31,7 @@ before_install:
 
 install:
   - pip install --upgrade pip
-  - pip install nose cvxpy scs numpy scipy
+  - pip install nose numpy scipy scs cvxpy
   - pip install .
 
 script:
