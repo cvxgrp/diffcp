@@ -47,8 +47,10 @@ PYBIND11_MODULE(_diffcp, m) {
   m.def("_solve_derivative_dense", &_solve_derivative_dense, py::call_guard<py::gil_scoped_release>());
   m.def("_solve_adjoint_derivative_dense", &_solve_adjoint_derivative_dense, py::call_guard<py::gil_scoped_release>());
 
-  m.def("dprojection", &dprojection);
-  m.def("dprojection_dense", &dprojection_dense);
+  m.def("dprojection", &dprojection, py::call_guard<py::gil_scoped_release>());
+  m.def("dprojection_dense", &dprojection_dense, py::call_guard<py::gil_scoped_release>());
+  m.def("dpi", &dpi, py::call_guard<py::gil_scoped_release>());
+  m.def("dpi_dense", &dpi_dense, py::call_guard<py::gil_scoped_release>());
   m.def("project_exp_cone", &project_exp_cone);
   m.def("in_exp", &in_exp);
   m.def("in_exp_dual", &in_exp_dual);
