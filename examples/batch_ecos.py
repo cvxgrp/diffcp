@@ -28,7 +28,7 @@ def time_function(f, N=1):
         result += [toc - tic]
     return np.mean(result), np.std(result)
 
-for n_jobs in range(1, 5):
+for n_jobs in range(1, 8):
     def f_forward():
         return diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
                                                  n_jobs_forward=n_jobs, n_jobs_backward=n_jobs, solver="ECOS", verbose=False)
