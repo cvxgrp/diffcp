@@ -9,6 +9,7 @@ import diffcp.cones as cone_lib
 import diffcp.utils as utils
 import _diffcp
 from _diffcp import Cone, ConeType
+import cvxpy as cp
 
 
 CPP_CONES_TO_SCS = {
@@ -81,7 +82,6 @@ class TestConeProgDiff(unittest.TestCase):
                 p, cone_lib._proj(x, cone_lib.POS, dual=True))
 
     def test_proj_soc(self):
-        import cvxpy as cp
         np.random.seed(0)
         n = 100
         for _ in range(15):
@@ -98,7 +98,6 @@ class TestConeProgDiff(unittest.TestCase):
                 p, cone_lib._proj(x, cone_lib.SOC, dual=True))
 
     def test_proj_psd(self):
-        import cvxpy as cp
         np.random.seed(0)
         n = 10
         for _ in range(15):
@@ -116,7 +115,6 @@ class TestConeProgDiff(unittest.TestCase):
                 cone_lib._proj(x_vec, cone_lib.PSD, dual=True), n))
 
     def test_proj_exp(self):
-        import cvxpy as cp
         np.random.seed(0)
         for _ in range(15):
             x = np.random.randn(9)
@@ -304,7 +302,7 @@ class TestConeProgDiff(unittest.TestCase):
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
         for mode in ["lsqr", "dense"]:
             x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-                A, b, c, cone_dims, eps=1e-10, mode=mode)
+                A, b, c, cone_dims, eps=1e-10, mode=mode, solver="SCS")
 
             dA = utils.get_random_like(
                 A, lambda n: np.random.normal(0, 1e-6, size=n))
@@ -314,21 +312,21 @@ class TestConeProgDiff(unittest.TestCase):
             dx, dy, ds = derivative(dA, db, dc)
 
             x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
-                A + dA, b + db, c + dc, cone_dims, eps=1e-10)
+                A + dA, b + db, c + dc, cone_dims, eps=1e-10, solver="SCS")
 
             np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
             np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
             np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
 
             x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-                A, b, c, cone_dims, eps=1e-10, mode=mode)
+                A, b, c, cone_dims, eps=1e-10, mode=mode, solver="SCS")
 
             objective = c.T @ x
             dA, db, dc = adjoint_derivative(
                 c, np.zeros(y.size), np.zeros(s.size))
 
             x_pert, _, _, _, _ = cone_prog.solve_and_derivative(
-                A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10)
+                A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10, solver="SCS")
             objective_pert = c.T @ x_pert
 
             np.testing.assert_allclose(
@@ -341,9 +339,9 @@ class TestConeProgDiff(unittest.TestCase):
         n = 10
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
         x, y, s, _, _ = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, eps=1e-11)
+            A, b, c, cone_dims, eps=1e-11, solver="SCS")
         x_p, y_p, s_p, _, _ = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1)
+            A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1, solver="SCS")
 
         np.testing.assert_allclose(x, x_p, atol=1e-7)
         np.testing.assert_allclose(y, y_p, atol=1e-7)
@@ -435,6 +433,21 @@ class TestEcosSolve(unittest.TestCase):
         cone_dims.pop("q")
         cone_dims.pop("s")
         cone_dims.pop("ep")
+        x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
+            A, b, c, cone_dims, solver="ECOS")
+
+        # check optimality conditions
+        np.testing.assert_allclose(A @ x + s, b, atol=1e-8)
+        np.testing.assert_allclose(A.T @ y + c, 0, atol=1e-8)
+        np.testing.assert_allclose(s @ y, 0, atol=1e-8)
+        np.testing.assert_allclose(s, cone_lib.pi(
+            s, cone_lib.parse_cone_dict(cone_dims), dual=False), atol=1e-8)
+        np.testing.assert_allclose(y, cone_lib.pi(
+            y, cone_lib.parse_cone_dict(cone_dims), dual=True), atol=1e-8)
+
+        x = cp.Variable(10)
+        prob = cp.Problem(cp.Minimize(cp.sum_squares(np.random.randn(5, 10) @ x) + np.random.randn(10) @ x), [cp.norm2(x) <= 1, np.random.randn(2, 10) @ x == np.random.randn(2)])
+        A, b, c, cone_dims = utils.scs_data_from_cvxpy_problem(prob)
         x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
             A, b, c, cone_dims, solver="ECOS")
 
