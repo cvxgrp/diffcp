@@ -20,6 +20,7 @@ CPP_CONES_TO_SCS = {
     ConeType.EXP_DUAL: "ed"
 }
 
+
 class TestConeProgDiff(unittest.TestCase):
 
     def test_vec_psd_dim(self):
@@ -185,8 +186,10 @@ class TestConeProgDiff(unittest.TestCase):
         np.random.seed(0)
         for _ in range(10):
             # n=55 equals k * (k + 1) / 2
-            self._test_dproj(Cone(ConeType.PSD, [cone_lib.psd_dim(55)]), True, 55)
-            self._test_dproj(Cone(ConeType.PSD, [cone_lib.psd_dim(55)]), False, 55)
+            self._test_dproj(
+                Cone(ConeType.PSD, [cone_lib.psd_dim(55)]), True, 55)
+            self._test_dproj(
+                Cone(ConeType.PSD, [cone_lib.psd_dim(55)]), False, 55)
 
     def test_dproj_exp(self):
         np.random.seed(0)
@@ -200,7 +203,8 @@ class TestConeProgDiff(unittest.TestCase):
         for _ in range(10):
             # dimension must be a multiple of 3
             self._test_dproj(Cone(ConeType.EXP_DUAL, [18]), True, 54, tol=1e-5)
-            self._test_dproj(Cone(ConeType.EXP_DUAL, [18]), False, 54, tol=1e-5)
+            self._test_dproj(
+                Cone(ConeType.EXP_DUAL, [18]), False, 54, tol=1e-5)
 
     def test_pi(self):
         np.random.seed(0)
@@ -276,7 +280,8 @@ class TestConeProgDiff(unittest.TestCase):
                 z = cone_lib.pi(x + dx, cones, dual=dual)
 
                 Dpi = _diffcp.dprojection(x, cone_list_cpp, dual)
-                np.testing.assert_allclose(Dpi.matvec(dx), z - proj_x, atol=1e-6)
+                np.testing.assert_allclose(
+                    Dpi.matvec(dx), z - proj_x, atol=1e-6)
 
                 Dpi = _diffcp.dprojection_dense(x, cone_list_cpp, dual)
                 np.testing.assert_allclose(Dpi @ dx, z - proj_x, atol=1e-6)
@@ -367,10 +372,11 @@ class TestConeProgDiff(unittest.TestCase):
                 np.testing.assert_allclose(results[i][0], xs[i])
                 np.testing.assert_allclose(results[i][1], ys[i])
                 np.testing.assert_allclose(results[i][2], ss[i])
-            
+
             dAs, dbs, dcs = DT_batch(xs, ys, ss)
             for i in range(50):
-                dA, db, dc = results[i][-1](results[i][0], results[i][1], results[i][2])
+                dA, db, dc = results[
+                    i][-1](results[i][0], results[i][1], results[i][2])
                 np.testing.assert_allclose(dA.todense(), dAs[i].todense())
                 np.testing.assert_allclose(dbs[i], db)
                 np.testing.assert_allclose(dcs[i], dc)
@@ -383,7 +389,7 @@ class TestConeProgDiff(unittest.TestCase):
         cone_dims = {"f": 2}
         with self.assertRaises(cone_prog.SolverError, msg='Solver scs returned status.*'):
             cone_prog.solve_and_derivative(A, b, c, cone_dims)
-    
+
     def test_lsqr(self):
         np.random.seed(0)
         A = np.random.randn(20, 10)
@@ -395,28 +401,60 @@ class TestConeProgDiff(unittest.TestCase):
 
         svx = np.linalg.lstsq(A, b, rcond=None)[0]
         xo = X.solution
-        np.testing.assert_allclose(svx, xo, err_msg=("istop: %d, itn: %d" % (X.istop, X.itn)))
-    
+        np.testing.assert_allclose(svx, xo, err_msg=(
+            "istop: %d, itn: %d" % (X.istop, X.itn)))
+
     def test_get_nonzeros(self):
         np.random.seed(0)
         A = sparse.csc_matrix(np.random.randn(4, 3))
-        self.assertEqual(A.nnz, 4*3)
+        self.assertEqual(A.nnz, 4 * 3)
         A[1, 1] = 0.0
-        self.assertEqual(A.nnz, 4*3)
+        self.assertEqual(A.nnz, 4 * 3)
         import copy
         A_copy = copy.deepcopy(A)
         A.data[A.data == 0.0] = np.nan
         rows, cols = A.nonzero()
-        self.assertEqual(rows.size, 4*3)
-        self.assertEqual(cols.size, 4*3)
+        self.assertEqual(rows.size, 4 * 3)
+        self.assertEqual(cols.size, 4 * 3)
         A.data[np.isnan(A.data)] = 0.0
         np.testing.assert_equal(A.data, A_copy.data)
-        self.assertEqual(A.nnz, 4*3)
-        self.assertEqual(A.nonzero()[0].size, 4*3-1)
+        self.assertEqual(A.nnz, 4 * 3)
+        self.assertEqual(A.nonzero()[0].size, 4 * 3 - 1)
         A.eliminate_zeros()
-        self.assertEqual(A.nnz, 4*3-1)
+        self.assertEqual(A.nnz, 4 * 3 - 1)
 
 
+class TestEcosSolve(unittest.TestCase):
+
+    def test_ecos_solve(self):
+        np.random.seed(0)
+        m = 20
+        n = 10
+
+        A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
+        cone_dims.pop("q")
+        cone_dims.pop("s")
+        cone_dims.pop("ep")
+        x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
+            A, b, c, cone_dims, solver="ECOS")
+
+        # check optimality conditions
+        np.testing.assert_allclose(A @ x + s, b, atol=1e-8)
+        np.testing.assert_allclose(A.T @ y + c, 0, atol=1e-8)
+        np.testing.assert_allclose(s @ y, 0, atol=1e-8)
+        np.testing.assert_allclose(s, cone_lib.pi(
+            s, cone_lib.parse_cone_dict(cone_dims), dual=False), atol=1e-8)
+        np.testing.assert_allclose(y, cone_lib.pi(
+            y, cone_lib.parse_cone_dict(cone_dims), dual=True), atol=1e-8)
+
+    def test_infeasible(self):
+        np.random.seed(0)
+        c = np.ones(1)
+        b = np.array([1.0, -1.0])
+        A = sparse.csc_matrix(np.ones((2, 1)))
+        cone_dims = {"f": 2}
+        with self.assertRaises(cone_prog.SolverError, msg='Solver ecos returned status Infeasible'):
+            cone_prog.solve_and_derivative(A, b, c, cone_dims, solver="ECOS")
 
 if __name__ == '__main__':
     unittest.main()

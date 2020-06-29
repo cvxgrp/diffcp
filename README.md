@@ -22,6 +22,7 @@ You will need a C++11-capable compiler to build `diffcp`.
 * [SCS](https://github.com/bodono/scs-python) >= 2.0.2
 * [pybind11](https://github.com/pybind/pybind11/tree/stable) >= 2.4
 * [threadpoolctl](https://github.com/joblib/threadpoolctl) >= 1.1
+* [ECOS](https://github.com/embotech/ecos-python)
 * Python 3.x
 
 `diffcp` uses Eigen; Eigen operations can be automatically vectorized by compilers. To enable vectorization, install with
@@ -65,15 +66,17 @@ with dual variable `y`.
 `diffcp` exposes the function
 
 ```python
-solve_and_derivative(A, b, c, cone_dict, warm_start=None, **kwargs).
+solve_and_derivative(A, b, c, cone_dict, warm_start=None, solver=None, **kwargs).
 ```
 
 This function returns a primal-dual solution `x`, `y`, and `s`, along with
 functions for evaluating the derivative and its adjoint (transpose).
 These functions respectively compute right and left multiplication of the derivative
 of the solution map at `A`, `b`, and `c` by a vector.
-In the case that the problem is not solved, i.e. SCS returns something
-other than "Solved" or "Solved/Innacurate" for status, we raise
+THe `solver` argument determines which solver to use; the available solvers
+are `solver="SCS"` and `solver="ECOS"`.
+If no solver is specified, `diffcp` will choose the solver itself.
+In the case that the problem is not solved, i.e. the solver fails for some reason, we will raise
 a `SolverError` Exception.
 
 #### Arguments
@@ -81,8 +84,8 @@ The arguments `A`, `b`, and `c` correspond to the problem data of a cone program
 * `A` must be a [SciPy sparse CSC matrix](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html).
 * `b` and `c` must be NumPy arrays.
 * `cone_dict` is a dictionary that defines the convex cone `K`.
-* `warm_start` is an optional tuple `(x, y, s)` at which to warm-start SCS.
-* `**kwargs` are keyword arguments to forward to SCS (e.g., `verbose=True`).
+* `warm_start` is an optional tuple `(x, y, s)` at which to warm-start. (Note: this is only available for the SCS solver).
+* `**kwargs` are keyword arguments to forward to the solver (e.g., `verbose=False`).
 
 These inputs must conform to the [SCS convention](https://github.com/bodono/scs-python) for problem data. The keys in `cone_dict` correspond to the cones, with
 * `diffcp.ZERO` for the zero cone,
