@@ -50,10 +50,20 @@ Matrix M_dense(const Matrix &Q, const std::vector<Cone> &cones, const Vector &u,
   return (Q - eye) * dpi_dense(u, v, w, cones) + eye;
 }
 
+
 Vector _solve_derivative_dense(const Matrix &M, const Matrix &MT,
                                const Vector &rhs) {
   // TODO: Factorization could be cached to optimize multiple calls
   return (MT * M).ldlt().solve(MT * rhs);
+}
+
+LsqrResult _solve_adjoint_derivative_lsqr(
+    const SparseMatrix &Q, const std::vector<Cone> &cones,
+    const Vector &u, const Vector &v, double w, const Vector &dz) {
+  LinearOperator M = M_operator(Q, cones, u, v, w);
+  LinearOperator MT = M.transpose();
+  LsqrResult result = lsqr(MT, dz);
+  return result;
 }
 
 Vector _solve_adjoint_derivative_dense(const Matrix &M, const Matrix &MT,

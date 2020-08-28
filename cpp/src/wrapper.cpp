@@ -6,6 +6,7 @@
 #include "deriv.h"
 #include "linop.h"
 #include "lsqr.h"
+#include "residual.h"
 
 namespace py = pybind11;
 
@@ -46,10 +47,26 @@ PYBIND11_MODULE(_diffcp, m) {
   m.def("M_dense", &M_dense, py::call_guard<py::gil_scoped_release>());
   m.def("_solve_derivative_dense", &_solve_derivative_dense, py::call_guard<py::gil_scoped_release>());
   m.def("_solve_adjoint_derivative_dense", &_solve_adjoint_derivative_dense, py::call_guard<py::gil_scoped_release>());
+  m.def("_solve_adjoint_derivative_lsqr", &_solve_adjoint_derivative_lsqr, py::call_guard<py::gil_scoped_release>());
 
-  m.def("dprojection", &dprojection);
-  m.def("dprojection_dense", &dprojection_dense);
+  m.def("projection", &projection, py::call_guard<py::gil_scoped_release>());
+  m.def("dprojection", &dprojection, py::call_guard<py::gil_scoped_release>());
+  m.def("dprojection_dense", &dprojection_dense, py::call_guard<py::gil_scoped_release>());
+  m.def("dpi", &dpi, py::call_guard<py::gil_scoped_release>());
+  m.def("dpi_dense", &dpi_dense, py::call_guard<py::gil_scoped_release>());
   m.def("project_exp_cone", &project_exp_cone);
   m.def("in_exp", &in_exp);
   m.def("in_exp_dual", &in_exp_dual);
+
+  // residual.h
+  m.def("proj_pq", &proj_pq, py::call_guard<py::gil_scoped_release>());
+  m.def("residual", &residual, py::call_guard<py::gil_scoped_release>());
+  m.def("N_residual", &N_residual, py::call_guard<py::gil_scoped_release>());
+  m.def("residual_dense", &residual_dense, py::call_guard<py::gil_scoped_release>());
+  m.def("N_residual_dense", &N_residual_dense, py::call_guard<py::gil_scoped_release>());
+  m.def("DN", &DN, py::call_guard<py::gil_scoped_release>());
+  m.def("apply_DN_matvec", &apply_DN_matvec, py::call_guard<py::gil_scoped_release>());
+  m.def("apply_DN_rmatvec", &apply_DN_rmatvec, py::call_guard<py::gil_scoped_release>());
+  m.def("DN_dense", &DN_dense, py::call_guard<py::gil_scoped_release>());
+  m.def("refine", &refine, py::call_guard<py::gil_scoped_release>());
 }

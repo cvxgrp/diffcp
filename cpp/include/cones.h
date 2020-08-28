@@ -16,6 +16,20 @@ public:
       : type(type), sizes(sizes){};
 };
 
+/* Project `x` onto the primal or dual cone.
+ *
+ *  Args:
+ *    x:     The point at which to evaluate the derivative
+ *    cones: A list of cones; the cone on which to project is the cartesian
+ *           product of these cones
+ *    dual:  whether to project onto the dual cone
+ *
+ *  Returns:
+ *    A Vector with the projection.
+ */
+Vector projection(const Vector &x, const std::vector<Cone> &cones,
+                  bool dual);
+
 /* Compute the derivative, at `x`, of a projection onto a cone.
  *
  *  Args:

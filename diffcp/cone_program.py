@@ -217,7 +217,6 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     DT = result["DT"]
     return x, y, s, D, DT
 
-
 def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
                                   mode='lsqr', raise_on_error=True, **kwargs):
     if mode not in ["dense", "lsqr"]:
@@ -281,23 +280,6 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
     z = (x, y - s, np.array([1]))
     u, v, w = z
 
-    Q = sparse.bmat([
-        [None, A.T, np.expand_dims(c, - 1)],
-        [-A, None, np.expand_dims(b, -1)],
-        [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
-    ])
-
-    D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
-    if mode == "dense":
-        Q_dense = Q.todense()
-        M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
-        MT = M.T
-    else:
-        M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
-        MT = M.transpose()
-
-    pi_z = pi(z, cones)
-
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
         Args:
@@ -309,6 +291,23 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
            NumPy arrays dx, dy, ds, the result of applying the derivative
            to the perturbations.
         """
+        Q = sparse.bmat([
+            [None, A.T, np.expand_dims(c, - 1)],
+            [-A, None, np.expand_dims(b, -1)],
+            [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
+        ])
+
+        D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
+        if mode == "dense":
+            Q_dense = Q.todense()
+            M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
+            MT = M.T
+
+        pi_z = pi(z, cones)
+
+        M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
+        MT = M.transpose()
+
         dQ = sparse.bmat([
             [None, dA.T, np.expand_dims(dc, - 1)],
             [-dA, None, np.expand_dims(db, -1)],
@@ -338,6 +337,20 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
             (`dA`, `db`, `dc`), the result of applying the adjoint to the
             perturbations; the sparsity pattern of `dA` matches that of `A`.
         """
+        Q = sparse.bmat([
+            [None, A.T, np.expand_dims(c, - 1)],
+            [-A, None, np.expand_dims(b, -1)],
+            [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
+        ])
+
+        D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
+        if mode == "dense":
+            Q_dense = Q.todense()
+            M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
+            MT = M.T
+
+        pi_z = pi(z, cones)
+
         dw = -(x @ dx + y @ dy + s @ ds)
         dz = np.concatenate(
             [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
@@ -347,7 +360,9 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
         elif mode == "dense":
             r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
         else:
-            r = _diffcp.lsqr(MT, dz).solution
+            lsqr_result = _diffcp._solve_adjoint_derivative_lsqr(
+                Q, cones_parsed, u, v, w, dz)
+            r = lsqr_result.solution
 
         values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
         dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)

@@ -3,7 +3,7 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import warnings
 
-from _diffcp import dprojection, project_exp_cone, Cone, ConeType
+from _diffcp import projection, dprojection, project_exp_cone, Cone, ConeType
 
 ZERO = "f"
 POS = "l"
@@ -118,7 +118,7 @@ def _proj(x, cone, dual=False):
         raise NotImplementedError("%s not implemented" % cone)
 
 
-def pi(x, cones, dual=False):
+def pi_python(x, cones, dual=False):
     """Projects x onto product of cones (or their duals)
     Args:
         x: NumPy array (with PSD data formatted in SCS convention)
@@ -142,3 +142,16 @@ def pi(x, cones, dual=False):
                 x[offset:offset + dim], cone, dual=dual)
             offset += dim
     return projection
+
+def pi(x, cones, dual=False):
+    """Projects x onto product of cones (or their duals)
+    Args:
+        x: NumPy array (with PSD data formatted in SCS convention)
+        cones: list of (cone name, size)
+        dual: whether to project onto the dual cone
+    Returns:
+        NumPy array that is the projection of `x` onto the (dual) cones
+    """
+
+    cone_list_cpp = parse_cone_dict_cpp(cones)
+    return projection(x, cone_list_cpp, dual)

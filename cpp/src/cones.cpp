@@ -14,6 +14,55 @@
 const double EulerConstant = std::exp(1.0);
 const double sqrt_two = std::sqrt(2.0);
 
+int vectorized_psd_size(int n) { return n * (n + 1) / 2; }
+
+
+bool in_exp(const Eigen::Vector3d &x) {
+  return (x[0] <= 0 && std::abs(x[1]) <= CONE_THRESH && x[2] >= 0) ||
+         (x[1] > 0 && x[1] * exp(x[0] / x[1]) - x[2] <= CONE_THRESH);
+}
+
+bool in_exp_dual(const Eigen::Vector3d &x) {
+  return (std::abs(x[0]) <= CONE_THRESH && x[1] >= 0 && x[2] >= 0) ||
+         (x[0] < 0 &&
+          -x[0] * exp(x[1] / x[0]) - EulerConstant * x[2] <= CONE_THRESH);
+}
+
+Vector lower_triangular_from_matrix(const Matrix &matrix) {
+  int n = matrix.rows();
+  Vector lower_tri = Vector::Zero(vectorized_psd_size(n));
+  int offset = 0;
+  for (int col = 0; col < n; ++col) {
+    for (int row = col; row < n; ++row) {
+      if (row != col) {
+        lower_tri[offset] = matrix(row, col) * sqrt_two;
+      } else {
+        lower_tri[offset] = matrix(row, col);
+      }
+      ++offset;
+    }
+  }
+  return lower_tri;
+}
+
+Matrix matrix_from_lower_triangular(const Vector &lower_tri) {
+  int n = static_cast<int>(std::sqrt(2 * lower_tri.size()));
+  Matrix matrix = Matrix::Zero(n, n);
+  int offset = 0;
+  for (int col = 0; col < n; ++col) {
+    for (int row = col; row < n; ++row) {
+      if (row != col) {
+        matrix(row, col) = lower_tri[offset] / sqrt_two;
+        matrix(col, row) = lower_tri[offset] / sqrt_two;
+      } else {
+        matrix(row, col) = lower_tri[offset];
+      }
+      ++offset;
+    }
+  }
+  return matrix;
+}
+
 double exp_newton_one_d(double rho, double y_hat, double z_hat) {
   double t = std::max(-z_hat, 1e-6);
   double f, fp;
@@ -115,52 +164,91 @@ Eigen::Vector3d project_exp_cone(const Eigen::Vector3d &x) {
   return projection;
 }
 
-bool in_exp(const Eigen::Vector3d &x) {
-  return (x[0] <= 0 && std::abs(x[1]) <= CONE_THRESH && x[2] >= 0) ||
-         (x[1] > 0 && x[1] * exp(x[0] / x[1]) - x[2] <= CONE_THRESH);
+
+void _projection(VectorRef &y, const Vector &x,
+                 ConeType type, bool dual) {
+  if (type == ZERO) {
+    if (dual) {
+      y << x;
+    } else {
+      /* segment is already zero */
+    }
+  } else if (type == POS) {
+    y << x.cwiseMax(0.);
+  } else if (type == SOC) {
+    double t = x[0];
+    const Vector z = x.segment(1, x.rows()-1);
+    double norm_z = z.norm();
+    if (norm_z <= t) {
+      y<< x;
+    } else if (norm_z <= -t) {
+      /* segment is already zero */
+    } else {
+      float c = 0.5 * (1. + t/norm_z);
+      VectorRef y_z = y.segment(1, y.rows()-1);
+      y[0] = c * norm_z;
+      y_z << c * z;
+    }
+  } else if (type == PSD) {
+    const Matrix &X = matrix_from_lower_triangular(x);
+    Eigen::SelfAdjointEigenSolver<Matrix> eigen_solver(X.rows());
+    eigen_solver.compute(X);
+    const Vector &eigenvalues = eigen_solver.eigenvalues();
+    const Matrix &Q = eigen_solver.eigenvectors();
+    const Vector &clamped_eigenvalues = eigenvalues.cwiseMax(0.);
+    Matrix result = Q * clamped_eigenvalues.asDiagonal() * Q.transpose();
+    y << lower_triangular_from_matrix(result);
+  } else if (type == EXP) {
+    int num_cones = x.size() / 3;
+    int offset = 0;
+    for (int i = 0; i < num_cones; ++i) {
+        Eigen::Vector3d x_i;
+        if (dual) {
+          x_i = -1. * x.segment(offset, 3);
+        } else {
+          x_i = x.segment(offset, 3);
+        }
+        y.segment(offset, 3) << project_exp_cone(x_i);
+        offset += 3;
+    }
+    // via Moreau: Pi_K*(x) = x + Pi_K(-x)
+    if (dual) {
+        y += x;
+    }
+  } else if (type == EXP_DUAL) {
+    _projection(y, x, EXP, !dual);
+  } else {
+    throw std::invalid_argument("Cone not supported.");
+  }
 }
 
-bool in_exp_dual(const Eigen::Vector3d &x) {
-  return (std::abs(x[0]) <= CONE_THRESH && x[1] >= 0 && x[2] >= 0) ||
-         (x[0] < 0 &&
-          -x[0] * exp(x[1] / x[0]) - EulerConstant * x[2] <= CONE_THRESH);
-}
 
-int vectorized_psd_size(int n) { return n * (n + 1) / 2; }
+Vector projection(const Vector &x, const std::vector<Cone> &cones,
+                  bool dual) {
+  Vector y = Vector::Zero(x.rows());
 
-Vector lower_triangular_from_matrix(const Matrix &matrix) {
-  int n = matrix.rows();
-  Vector lower_tri = Vector::Zero(vectorized_psd_size(n));
   int offset = 0;
-  for (int col = 0; col < n; ++col) {
-    for (int row = col; row < n; ++row) {
-      if (row != col) {
-        lower_tri[offset] = matrix(row, col) * sqrt_two;
-      } else {
-        lower_tri[offset] = matrix(row, col);
+  for (const Cone &cone : cones) {
+    const ConeType &type = cone.type;
+    const std::vector<int> &sizes = cone.sizes;
+    if (std::accumulate(sizes.begin(), sizes.end(), 0) == 0) {
+      continue;
+    }
+    for (int size : sizes) {
+      if (type == PSD) {
+        size = vectorized_psd_size(size);
+      } else if (type == EXP) {
+        size *= 3;
+      } else if (type == EXP_DUAL) {
+        size *= 3;
       }
-      ++offset;
+      VectorRef y_segment = y.segment(offset, size);
+      _projection(y_segment, x.segment(offset, size), type, dual);
+      offset += size;
     }
   }
-  return lower_tri;
-}
 
-Matrix matrix_from_lower_triangular(const Vector &lower_tri) {
-  int n = static_cast<int>(std::sqrt(2 * lower_tri.size()));
-  Matrix matrix = Matrix::Zero(n, n);
-  int offset = 0;
-  for (int col = 0; col < n; ++col) {
-    for (int row = col; row < n; ++row) {
-      if (row != col) {
-        matrix(row, col) = lower_tri[offset] / sqrt_two;
-        matrix(col, row) = lower_tri[offset] / sqrt_two;
-      } else {
-        matrix(row, col) = lower_tri[offset];
-      }
-      ++offset;
-    }
-  }
-  return matrix;
+  return y;
 }
 
 LinearOperator _dprojection_exp(const Vector &x, bool dual) {
