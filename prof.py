@@ -8,25 +8,27 @@ import diffcp.cone_program as cone_prog
 import diffcp.cones as cone_lib
 import diffcp.utils as utils
 
-
 modes = ['lsqr']
 # modes = ['lsqr', 'dense']
 n_batch = 256
 m = 100
 n = 50
 n_trial = 10
+eps = 1e-4
 
 data = []
 for i in range(n_batch):
     data.append(utils.least_squares_eq_scs_data(m, n, seed=i))
 A, b, c, cone_dims = zip(*data)
 
+print('mode forward_time adjoint_time adjoint_derivative_time')
+
 for mode in modes:
     forward_time = 0.0
     for i in range(n_trial):
         tic = time.time()
         x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative_batch(
-            A, b, c, cone_dims, eps=1e-10, mode=mode)
+            A, b, c, cone_dims, eps=eps, mode=mode)
         toc = time.time()
         forward_time += (toc - tic) / float(n_trial)
 
