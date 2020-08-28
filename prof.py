@@ -9,10 +9,12 @@ import diffcp.cones as cone_lib
 import diffcp.utils as utils
 
 
-modes = ['lsqr', 'dense']
+modes = ['lsqr']
+# modes = ['lsqr', 'dense']
 n_batch = 256
 m = 100
 n = 50
+n_trial = 10
 
 data = []
 for i in range(n_batch):
@@ -20,8 +22,13 @@ for i in range(n_batch):
 A, b, c, cone_dims = zip(*data)
 
 for mode in modes:
-    x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative_batch(
-        A, b, c, cone_dims, eps=1e-10, mode=mode)
+    forward_time = 0.0
+    for i in range(n_trial):
+        tic = time.time()
+        x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative_batch(
+            A, b, c, cone_dims, eps=1e-10, mode=mode)
+        toc = time.time()
+        forward_time += (toc - tic) / float(n_trial)
 
     dA, db, dc = [], [], []
     for i in range(n_batch):
@@ -31,18 +38,18 @@ for mode in modes:
         dc.append(np.random.normal(0, 1e-2, size=c[0].size))
 
     derivative_time = 0.0
-    for _ in range(10):
+    for _ in range(n_trial):
         tic = time.time()
         dx, dy, ds = derivative(dA, db, dc)
         toc = time.time()
-        derivative_time += (toc - tic) / 10
+        derivative_time += (toc - tic) / float(n_trial)
 
     adjoint_derivative_time = 0.0
-    for _ in range(10):
+    for _ in range(n_trial):
         tic = time.time()
         dA, db, dc = adjoint_derivative(
             c, [np.zeros(y[0].size)] * n_batch, [np.zeros(s[0].size)] * n_batch)
         toc = time.time()
-        adjoint_derivative_time += (toc - tic) / 10
+        adjoint_derivative_time += (toc - tic) / float(n_trial)
 
-    print(mode, derivative_time, adjoint_derivative_time)
+    print(mode, forward_time, derivative_time, adjoint_derivative_time)
