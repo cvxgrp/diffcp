@@ -73,7 +73,7 @@ This function returns a primal-dual solution `x`, `y`, and `s`, along with
 functions for evaluating the derivative and its adjoint (transpose).
 These functions respectively compute right and left multiplication of the derivative
 of the solution map at `A`, `b`, and `c` by a vector.
-THe `solver` argument determines which solver to use; the available solvers
+The `solver` argument determines which solver to use; the available solvers
 are `solver="SCS"` and `solver="ECOS"`.
 If no solver is specified, `diffcp` will choose the solver itself.
 In the case that the problem is not solved, i.e. the solver fails for some reason, we will raise

@@ -294,6 +294,51 @@ class TestConeProgDiff(unittest.TestCase):
         self.assertListEqual(A_r, B_r)
         self.assertListEqual(A_c, B_c)
 
+    def test_infeasible(self):
+        np.random.seed(0)
+        c = np.ones(1)
+        b = np.array([1.0, -1.0])
+        A = sparse.csc_matrix(np.ones((2, 1)))
+        cone_dims = {"f": 2}
+        with self.assertRaises(cone_prog.SolverError, msg='Solver scs returned status.*'):
+            cone_prog.solve_and_derivative(A, b, c, cone_dims)
+
+    def test_lsqr(self):
+        np.random.seed(0)
+        A = np.random.randn(20, 10)
+        b = np.random.randn(20)
+
+        b_copy = b.copy()
+        X = _diffcp.lsqr_sparse(sparse.csc_matrix(A), b)
+        np.testing.assert_equal(b_copy, b)
+
+        svx = np.linalg.lstsq(A, b, rcond=None)[0]
+        xo = X.solution
+        np.testing.assert_allclose(svx, xo, err_msg=(
+            "istop: %d, itn: %d" % (X.istop, X.itn)))
+
+    def test_get_nonzeros(self):
+        np.random.seed(0)
+        A = sparse.csc_matrix(np.random.randn(4, 3))
+        self.assertEqual(A.nnz, 4 * 3)
+        A[1, 1] = 0.0
+        self.assertEqual(A.nnz, 4 * 3)
+        import copy
+        A_copy = copy.deepcopy(A)
+        A.data[A.data == 0.0] = np.nan
+        rows, cols = A.nonzero()
+        self.assertEqual(rows.size, 4 * 3)
+        self.assertEqual(cols.size, 4 * 3)
+        A.data[np.isnan(A.data)] = 0.0
+        np.testing.assert_equal(A.data, A_copy.data)
+        self.assertEqual(A.nnz, 4 * 3)
+        self.assertEqual(A.nonzero()[0].size, 4 * 3 - 1)
+        A.eliminate_zeros()
+        self.assertEqual(A.nnz, 4 * 3 - 1)
+
+
+class TestSCS(unittest.TestCase):
+
     def test_solve_and_derivative(self):
         np.random.seed(0)
         m = 20
@@ -379,50 +424,8 @@ class TestConeProgDiff(unittest.TestCase):
                 np.testing.assert_allclose(dbs[i], db)
                 np.testing.assert_allclose(dcs[i], dc)
 
-    def test_infeasible(self):
-        np.random.seed(0)
-        c = np.ones(1)
-        b = np.array([1.0, -1.0])
-        A = sparse.csc_matrix(np.ones((2, 1)))
-        cone_dims = {"f": 2}
-        with self.assertRaises(cone_prog.SolverError, msg='Solver scs returned status.*'):
-            cone_prog.solve_and_derivative(A, b, c, cone_dims)
 
-    def test_lsqr(self):
-        np.random.seed(0)
-        A = np.random.randn(20, 10)
-        b = np.random.randn(20)
-
-        b_copy = b.copy()
-        X = _diffcp.lsqr_sparse(sparse.csc_matrix(A), b)
-        np.testing.assert_equal(b_copy, b)
-
-        svx = np.linalg.lstsq(A, b, rcond=None)[0]
-        xo = X.solution
-        np.testing.assert_allclose(svx, xo, err_msg=(
-            "istop: %d, itn: %d" % (X.istop, X.itn)))
-
-    def test_get_nonzeros(self):
-        np.random.seed(0)
-        A = sparse.csc_matrix(np.random.randn(4, 3))
-        self.assertEqual(A.nnz, 4 * 3)
-        A[1, 1] = 0.0
-        self.assertEqual(A.nnz, 4 * 3)
-        import copy
-        A_copy = copy.deepcopy(A)
-        A.data[A.data == 0.0] = np.nan
-        rows, cols = A.nonzero()
-        self.assertEqual(rows.size, 4 * 3)
-        self.assertEqual(cols.size, 4 * 3)
-        A.data[np.isnan(A.data)] = 0.0
-        np.testing.assert_equal(A.data, A_copy.data)
-        self.assertEqual(A.nnz, 4 * 3)
-        self.assertEqual(A.nonzero()[0].size, 4 * 3 - 1)
-        A.eliminate_zeros()
-        self.assertEqual(A.nnz, 4 * 3 - 1)
-
-
-class TestEcosSolve(unittest.TestCase):
+class TestECOS(unittest.TestCase):
 
     def test_ecos_solve(self):
         np.random.seed(0)
