@@ -6,12 +6,14 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import scs
+import ecos
 from threadpoolctl import threadpool_limits
 
 import multiprocessing as mp
 from multiprocessing.pool import ThreadPool
 
 import _diffcp
+
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -65,7 +67,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
     """
     batch_size = len(As)
     if warm_starts is None:
-        warm_starts = [None]*batch_size
+        warm_starts = [None] * batch_size
     if n_jobs_forward == -1:
         n_jobs_forward = mp.cpu_count()
     if n_jobs_backward == -1:
@@ -78,7 +80,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
         xs, ys, ss, Ds, DTs = [], [], [], [], []
         for i in range(batch_size):
             x, y, s, D, DT = solve_and_derivative(As[i], bs[i], cs[i],
-                    cone_dicts[i], warm_starts[i], mode=mode, **kwargs)
+                                                  cone_dicts[i], warm_starts[i], mode=mode, **kwargs)
             xs += [x]
             ys += [y]
             ss += [s]
@@ -87,8 +89,8 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
     else:
         # thread pool
         pool = ThreadPool(processes=n_jobs_forward)
-        args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in \
-                    zip(As, bs, cs, cone_dicts, warm_starts)]
+        args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in
+                zip(As, bs, cs, cone_dicts, warm_starts)]
         with threadpool_limits(limits=1):
             results = pool.starmap(solve_and_derivative_wrapper, args)
         pool.close()
@@ -107,7 +109,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
                 dys += [dy]
                 dss += [ds]
             return dxs, dys, dss
-        
+
         def DT_batch(dxs, dys, dss, **kwargs):
             dAs, dbs, dcs = [], [], []
             for i in range(batch_size):
@@ -120,6 +122,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
 
         def D_batch(dAs, dbs, dcs, **kwargs):
             pool = ThreadPool(processes=n_jobs_backward)
+
             def Di(i):
                 return Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
             results = pool.map(Di, range(batch_size))
@@ -131,6 +134,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
 
         def DT_batch(dxs, dys, dss, **kwargs):
             pool = ThreadPool(processes=n_jobs_backward)
+
             def DTi(i):
                 return DTs[i](dxs[i], dys[i], dss[i], **kwargs)
             results = pool.map(DTi, range(batch_size))
@@ -218,12 +222,12 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     return x, y, s, D, DT
 
 
-def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
+def solve_and_derivative_internal(A, b, c, cone_dict, solver=None, warm_start=None,
                                   mode='lsqr', raise_on_error=True, **kwargs):
     if mode not in ["dense", "lsqr"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense' and 'lsqr'".format(mode))
-    
+
     if np.isnan(A.data).any():
         raise RuntimeError("Found a NaN in A.")
 
@@ -239,39 +243,104 @@ def solve_and_derivative_internal(A, b, c, cone_dict, warm_start=None,
     # eliminate explicit zeros in A, we no longer need them
     A.eliminate_zeros()
 
-    data = {
-        "A": A,
-        "b": b,
-        "c": c
-    }
-
-    if warm_start is not None:
-        data["x"] = warm_start[0]
-        data["y"] = warm_start[1]
-        data["s"] = warm_start[2]
-
-    kwargs.setdefault("verbose", False)
-    result = scs.solve(data, cone_dict, **kwargs)
-
-    status = result["info"]["status"]
-    if status == "Solved/Inaccurate" and "acceleration_lookback" not in kwargs:
-        # anderson acceleration is sometimes unstable
-        result = scs.solve(data, cone_dict, acceleration_lookback=0, **kwargs)
-        status = result["info"]["status"]
-
-    if status == "Solved/Inaccurate":
-        warnings.warn("Solved/Inaccurate.")
-    elif status != "Solved":
-        if raise_on_error:
-            raise SolverError("Solver scs returned status %s" % status)
+    if solver is None:
+        psd_cone = ('s' in cone_dict) and (cone_dict['s'] != [])
+        ep_cone = ('ep' in cone_dict) and (cone_dict['ep'] != 0)
+        ed_cone = ('ed' in cone_dict) and (cone_dict['ed'] != 0)
+        if psd_cone or ep_cone or ed_cone:
+            solver = "SCS"
         else:
-            result["D"] = None
-            result["DT"] = None
-            return result
+            solver = "ECOS"
 
-    x = result["x"]
-    y = result["y"]
-    s = result["s"]
+    if solver == "SCS":
+        data = {
+            "A": A,
+            "b": b,
+            "c": c
+        }
+
+        if warm_start is not None:
+            data["x"] = warm_start[0]
+            data["y"] = warm_start[1]
+            data["s"] = warm_start[2]
+
+        kwargs.setdefault("verbose", False)
+        result = scs.solve(data, cone_dict, **kwargs)
+
+        status = result["info"]["status"]
+        if status == "Solved/Inaccurate" and "acceleration_lookback" not in kwargs:
+            # anderson acceleration is sometimes unstable
+            result = scs.solve(
+                data, cone_dict, acceleration_lookback=0, **kwargs)
+            status = result["info"]["status"]
+
+        if status == "Solved/Inaccurate":
+            warnings.warn("Solved/Inaccurate.")
+        elif status != "Solved":
+            if raise_on_error:
+                raise SolverError("Solver scs returned status %s" % status)
+            else:
+                result["D"] = None
+                result["DT"] = None
+                return result
+
+        x = result["x"]
+        y = result["y"]
+        s = result["s"]
+    elif solver == "ECOS":
+        if ('s' in cone_dict) and (cone_dict['s'] != []):
+            raise ValueError("PSD cone not supported by ECOS.")
+        if ('ep' in cone_dict) and (cone_dict['ep'] != 0):
+            raise NotImplementedError("Exponential cones not supported yet.")
+        if ('ed' in cone_dict) and (cone_dict['ed'] != 0):
+            raise NotImplementedError("Exponential cones not supported yet.")
+        if warm_start is not None:
+            raise ValueError("ECOS does not support warm starting.")
+        len_eq = cone_dict["f"]
+        C_ecos = c
+        G_ecos = A[len_eq:]
+        if 0 in G_ecos.shape:
+            G_ecos = None
+        H_ecos = b[len_eq:].flatten()
+        if 0 in H_ecos.shape:
+            H_ecos = None
+        A_ecos = A[:len_eq]
+        if 0 in A_ecos.shape:
+            A_ecos = None
+        B_ecos = b[:len_eq].flatten()
+        if 0 in B_ecos.shape:
+            B_ecos = None
+
+        cone_dict_ecos = {}
+        if 'l' in cone_dict:
+            cone_dict_ecos['l'] = cone_dict['l']
+        if 'q' in cone_dict:
+            cone_dict_ecos['q'] = cone_dict['q']
+        if A_ecos is not None and A_ecos.nnz == 0 and np.prod(A_ecos.shape) > 0:
+            raise ValueError("ECOS cannot handle sparse data with nnz == 0.")
+
+        kwargs.setdefault("verbose", False)
+        solution = ecos.solve(C_ecos, G_ecos, H_ecos,
+                              cone_dict_ecos, A_ecos, B_ecos, **kwargs)
+        x = solution["x"]
+        y = np.append(solution["y"], solution["z"])
+        s = b - A @ x
+
+        result = {
+            "x": x,
+            "y": y,
+            "s": s
+        }
+        status = solution["info"]["exitFlag"]
+        STATUS_LOOKUP = {0: "Optimal", 1: "Infeasible", 2: "Unbounded", 10: "Optimal Inaccurate",
+                         11: "Infeasible Inaccurate", 12: "Unbounded Inaccurate"}
+        if status < 0:
+            raise SolverError("Solver ecos errored.")
+        if status != 0:
+            raise SolverError("Solver ecos returned status %s" %
+                              STATUS_LOOKUP[status])
+    else:
+        raise ValueError("Solver %s not supported." % solver)
 
     # pre-compute quantities for the derivative
     m, n = A.shape
