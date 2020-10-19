@@ -55,18 +55,19 @@ def march_native():
 
 
 _diffcp = Extension(
-        '_diffcp',
-        glob("cpp/src/*.cpp"),
-        include_dirs=[
-            get_pybind_include(),
-            get_pybind_include(user=True),
-            "cpp/external/eigen",
-            "cpp/external/eigen/Eigen",
-            "cpp/include",
-        ],
-        language='c++',
-        extra_compile_args=["-O3", "-std=c++11"] + openmp() + march_native()
+    '_diffcp',
+    glob("cpp/src/*.cpp"),
+    include_dirs=[
+        get_pybind_include(),
+        get_pybind_include(user=True),
+        "cpp/external/eigen",
+        "cpp/external/eigen/Eigen",
+        "cpp/include",
+    ],
+    language='c++',
+    extra_compile_args=["-O3", "-std=c++11"] + openmp() + march_native()
 )
+
 
 def is_platform_mac():
     return sys.platform == 'darwin'
@@ -89,7 +90,7 @@ ext_modules = [_diffcp]
 
 setup(
     name='diffcp',
-    version="1.0.13",
+    version="1.0.15",
     author="Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, Walaa Moursi",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -100,7 +101,8 @@ setup(
         "scs >= 2.0.2",  # 2.0.2 is the oldest version on conda forge
         "scipy >= 1.1.0",
         "pybind11 >= 2.4",
-        "threadpoolctl >= 1.1"],
+        "threadpoolctl >= 1.1",
+        "ecos"],
     url="http://github.com/cvxgrp/diffcp/",
     ext_modules=ext_modules,
     license="Apache License, Version 2.0",
