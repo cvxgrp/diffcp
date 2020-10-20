@@ -151,7 +151,8 @@ class SolverError(Exception):
     pass
 
 
-def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwargs):
+def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
+                         solve_method='SCS', **kwargs):
     """Solves a cone program, returns its derivative as an abstract linear map.
 
     This function solves a convex cone program, with primal-dual problems
@@ -193,7 +194,9 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
       warm_start: (optional) A tuple (x, y, s) at which to warm-start SCS.
       mode: (optional) Which mode to compute derivative with, options are
           ["dense", "lsqr"].
-      kwargs: (optional) Keyword arguments to send to SCS.
+      solve_method: (optional) Name of solver to use; SCS or ECOS.
+      kwargs: (optional) Keyword arguments to send to the solver.
+
     Returns:
         x: Optimal value of the primal variable x.
         y: Optimal value of the dual variable y.
@@ -213,7 +216,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
         SolverError: if the cone program is infeasible or unbounded.
     """
     result = solve_and_derivative_internal(
-        A, b, c, cone_dict, warm_start=warm_start, mode=mode, **kwargs)
+        A, b, c, cone_dict, warm_start=warm_start, mode=mode,
+        solve_method=solve_method, **kwargs)
     x = result["x"]
     y = result["y"]
     s = result["s"]
@@ -222,8 +226,8 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr', **kwa
     return x, y, s, D, DT
 
 
-def solve_and_derivative_internal(A, b, c, cone_dict, solver=None, warm_start=None,
-                                  mode='lsqr', raise_on_error=True, **kwargs):
+def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
+        warm_start=None, mode='lsqr', raise_on_error=True, **kwargs):
     if mode not in ["dense", "lsqr"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense' and 'lsqr'".format(mode))
@@ -243,16 +247,16 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solver=None, warm_start=No
     # eliminate explicit zeros in A, we no longer need them
     A.eliminate_zeros()
 
-    if solver is None:
+    if solve_method is None:
         psd_cone = ('s' in cone_dict) and (cone_dict['s'] != [])
         ep_cone = ('ep' in cone_dict) and (cone_dict['ep'] != 0)
         ed_cone = ('ed' in cone_dict) and (cone_dict['ed'] != 0)
         if psd_cone or ep_cone or ed_cone:
-            solver = "SCS"
+            solve_method = "SCS"
         else:
-            solver = "ECOS"
+            solve_method = "ECOS"
 
-    if solver == "SCS":
+    if solve_method == "SCS":
         data = {
             "A": A,
             "b": b,
@@ -287,7 +291,9 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solver=None, warm_start=No
         x = result["x"]
         y = result["y"]
         s = result["s"]
-    elif solver == "ECOS":
+    elif solve_method == "ECOS":
+        if warm_start is not None:
+            raise ValueError('ECOS does not support warmstart.')
         if ('s' in cone_dict) and (cone_dict['s'] != []):
             raise ValueError("PSD cone not supported by ECOS.")
         if ('ep' in cone_dict) and (cone_dict['ep'] != 0):
@@ -340,7 +346,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solver=None, warm_start=No
             raise SolverError("Solver ecos returned status %s" %
                               STATUS_LOOKUP[status])
     else:
-        raise ValueError("Solver %s not supported." % solver)
+        raise ValueError("Solver %s not supported." % solve_method)
 
     # pre-compute quantities for the derivative
     m, n = A.shape

@@ -347,7 +347,7 @@ class TestSCS(unittest.TestCase):
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
         for mode in ["lsqr", "dense"]:
             x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-                A, b, c, cone_dims, eps=1e-10, mode=mode, solver="SCS")
+                A, b, c, cone_dims, eps=1e-10, mode=mode, solve_method="SCS")
 
             dA = utils.get_random_like(
                 A, lambda n: np.random.normal(0, 1e-6, size=n))
@@ -357,21 +357,21 @@ class TestSCS(unittest.TestCase):
             dx, dy, ds = derivative(dA, db, dc)
 
             x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
-                A + dA, b + db, c + dc, cone_dims, eps=1e-10, solver="SCS")
+                A + dA, b + db, c + dc, cone_dims, eps=1e-10, solve_method="SCS")
 
             np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
             np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
             np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
 
             x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-                A, b, c, cone_dims, eps=1e-10, mode=mode, solver="SCS")
+                A, b, c, cone_dims, eps=1e-10, mode=mode, solve_method="SCS")
 
             objective = c.T @ x
             dA, db, dc = adjoint_derivative(
                 c, np.zeros(y.size), np.zeros(s.size))
 
             x_pert, _, _, _, _ = cone_prog.solve_and_derivative(
-                A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10, solver="SCS")
+                A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10, solve_method="SCS")
             objective_pert = c.T @ x_pert
 
             np.testing.assert_allclose(
@@ -384,9 +384,9 @@ class TestSCS(unittest.TestCase):
         n = 10
         A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
         x, y, s, _, _ = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, eps=1e-11, solver="SCS")
+            A, b, c, cone_dims, eps=1e-11, solve_method="SCS")
         x_p, y_p, s_p, _, _ = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1, solver="SCS")
+            A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1, solve_method="SCS")
 
         np.testing.assert_allclose(x, x_p, atol=1e-7)
         np.testing.assert_allclose(y, y_p, atol=1e-7)
@@ -437,7 +437,7 @@ class TestECOS(unittest.TestCase):
         cone_dims.pop("s")
         cone_dims.pop("ep")
         x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, solver="ECOS")
+            A, b, c, cone_dims, solve_method="ECOS")
 
         # check optimality conditions
         np.testing.assert_allclose(A @ x + s, b, atol=1e-8)
@@ -452,7 +452,7 @@ class TestECOS(unittest.TestCase):
         prob = cp.Problem(cp.Minimize(cp.sum_squares(np.random.randn(5, 10) @ x) + np.random.randn(10) @ x), [cp.norm2(x) <= 1, np.random.randn(2, 10) @ x == np.random.randn(2)])
         A, b, c, cone_dims = utils.scs_data_from_cvxpy_problem(prob)
         x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, solver="ECOS")
+            A, b, c, cone_dims, solve_method="ECOS")
 
         # check optimality conditions
         np.testing.assert_allclose(A @ x + s, b, atol=1e-8)
@@ -470,7 +470,7 @@ class TestECOS(unittest.TestCase):
         A = sparse.csc_matrix(np.ones((2, 1)))
         cone_dims = {"f": 2}
         with self.assertRaises(cone_prog.SolverError, msg='Solver ecos returned status Infeasible'):
-            cone_prog.solve_and_derivative(A, b, c, cone_dims, solver="ECOS")
+            cone_prog.solve_and_derivative(A, b, c, cone_dims, solve_method="ECOS")
 
 if __name__ == '__main__':
     unittest.main()
