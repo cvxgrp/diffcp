@@ -340,9 +340,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         status = solution["info"]["exitFlag"]
         STATUS_LOOKUP = {0: "Optimal", 1: "Infeasible", 2: "Unbounded", 10: "Optimal Inaccurate",
                          11: "Infeasible Inaccurate", 12: "Unbounded Inaccurate"}
-        if status < 0:
+
+        if status == 10:
+            warnings.warn("Solved/Inaccurate.")
+        elif status < 0:
             raise SolverError("Solver ecos errored.")
-        if status != 0:
+        if status not in [0, 10]:
             raise SolverError("Solver ecos returned status %s" %
                               STATUS_LOOKUP[status])
     else:
