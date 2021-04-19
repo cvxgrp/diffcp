@@ -348,6 +348,19 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         if status not in [0, 10]:
             raise SolverError("Solver ecos returned status %s" %
                               STATUS_LOOKUP[status])
+
+        # Convert ECOS info into SCS info to be compatible if called from
+        # CVXPY DIFFCP solver
+        ECOS2SCS_STATUS_MAP = {0: "Solved", 1: "Infeasible", 2: "Unbounded",
+                               10: "Solved/Inaccurate",
+                               11: "Infeasible/Inaccurate",
+                               12: "Unbounded/Inaccurate"}
+        result['info'] = {'status': ECOS2SCS_STATUS_MAP.get(status, "Failure"),
+                          'solveTime': solution['info']['timing']['tsolve'],
+                          'setupTime': solution['info']['timing']['tsetup'],
+                          'iter': solution['info']['iter'],
+                          'pobj': solution['info']['pcost']}
+
     else:
         raise ValueError("Solver %s not supported." % solve_method)
 
