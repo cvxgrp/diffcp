@@ -62,6 +62,7 @@ def test_warm_start():
 def test_threading():
     np.random.seed(0)
     test_rtol = 1e-4
+    test_atol = 1e-9
     m = 20
     n = 10
     As, bs, cs, cone_dicts = [], [], [], []
@@ -80,14 +81,14 @@ def test_threading():
             As, bs, cs, cone_dicts, n_jobs_forward=n_jobs, n_jobs_backward=n_jobs)
 
         for i in range(50):
-            np.testing.assert_allclose(results[i][0], xs[i], rtol=test_rtol)
-            np.testing.assert_allclose(results[i][1], ys[i], rtol=test_rtol)
-            np.testing.assert_allclose(results[i][2], ss[i], rtol=test_rtol)
+            np.testing.assert_allclose(results[i][0], xs[i], rtol=test_rtol, atol=test_atol)
+            np.testing.assert_allclose(results[i][1], ys[i], rtol=test_rtol, atol=test_atol)
+            np.testing.assert_allclose(results[i][2], ss[i], rtol=test_rtol, atol=test_atol)
 
         dAs, dbs, dcs = DT_batch(xs, ys, ss)
         for i in range(50):
             dA, db, dc = results[
                 i][-1](results[i][0], results[i][1], results[i][2])
-            np.testing.assert_allclose(dA.todense(), dAs[i].todense(), rtol=test_rtol)
-            np.testing.assert_allclose(dbs[i], db, rtol=test_rtol)
-            np.testing.assert_allclose(dcs[i], dc, rtol=test_rtol)
+            np.testing.assert_allclose(dA.todense(), dAs[i].todense(), rtol=test_rtol, atol=test_atol)
+            np.testing.assert_allclose(dbs[i], db, rtol=test_rtol, atol=test_atol)
+            np.testing.assert_allclose(dcs[i], dc, rtol=test_rtol, atol=test_atol)
