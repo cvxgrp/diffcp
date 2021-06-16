@@ -3,7 +3,7 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as splinalg
 import warnings
 
-from _diffcp import dprojection, project_exp_cone, Cone, ConeType
+from _diffcp import projection, dprojection, project_exp_cone, Cone, ConeType
 
 ZERO = "f"
 POS = "l"
@@ -127,18 +127,6 @@ def pi(x, cones, dual=False):
     Returns:
         NumPy array that is the projection of `x` onto the (dual) cones
     """
-    projection = np.zeros(x.shape)
-    offset = 0
-    for cone, sz in cones:
-        sz = sz if isinstance(sz, (tuple, list)) else (sz,)
-        if sum(sz) == 0:
-            continue
-        for dim in sz:
-            if cone == PSD:
-                dim = vec_psd_dim(dim)
-            elif cone == EXP or cone == EXP_DUAL:
-                dim *= 3
-            projection[offset:offset + dim] = _proj(
-                x[offset:offset + dim], cone, dual=dual)
-            offset += dim
-    return projection
+
+    cone_list_cpp = parse_cone_dict_cpp(cones)
+    return projection(x, cone_list_cpp, dual)
