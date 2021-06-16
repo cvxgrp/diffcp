@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.org/cvxgrp/diffcp.svg?branch=master)](https://travis-ci.org/cvxgrp/diffcp)
-[![Build status](https://ci.appveyor.com/api/projects/status/ctrw6bij02ptsn0t/branch/master?svg=true)](https://ci.appveyor.com/project/sbarratt/diffcp/branch/master)
+[![Build Status](http://github.com/cvxgrp/diffcp/workflows/build/badge.svg?event=push)](https://github.com/cvxgrp/diffcp/actions/workflows/build.yml)
 
 # diffcp
 
