@@ -51,6 +51,6 @@ def test_infeasible():
     c = np.ones(1)
     b = np.array([1.0, -1.0])
     A = sparse.csc_matrix(np.ones((2, 1)))
-    cone_dims = {"f": 2}
+    cone_dims = {cone_lib.EQ_DIM: 2}
     with pytest.raises(cone_prog.SolverError, match=r"Solver ecos returned status Infeasible"):
         cone_prog.solve_and_derivative(A, b, c, cone_dims, solve_method="ECOS")

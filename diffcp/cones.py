@@ -1,11 +1,15 @@
 import numpy as np
 import scipy.sparse as sparse
-import scipy.sparse.linalg as splinalg
-import warnings
+from _diffcp import project_exp_cone, Cone, ConeType
+from distutils.version import StrictVersion
+import scs
 
-from _diffcp import dprojection, project_exp_cone, Cone, ConeType
+if StrictVersion(scs.__version__) >= StrictVersion('3.0.0'):
+    EQ_DIM = "z"
+else:
+    EQ_DIM = "f"
 
-ZERO = "f"
+ZERO = EQ_DIM
 POS = "l"
 SOC = "q"
 PSD = "s"
@@ -17,7 +21,7 @@ CONES = [ZERO, POS, SOC, PSD, EXP, EXP_DUAL]
 
 # Map from Python cones to CPP format
 CONE_MAP = {
-    "f": ConeType.ZERO,
+    EQ_DIM: ConeType.ZERO,
     "l": ConeType.POS,
     "q": ConeType.SOC,
     "s": ConeType.PSD,

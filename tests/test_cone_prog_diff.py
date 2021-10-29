@@ -10,7 +10,7 @@ import diffcp.cones as cone_lib
 import diffcp.utils as utils
 
 CPP_CONES_TO_SCS = {
-    ConeType.ZERO: "f",
+    ConeType.ZERO: cone_lib.EQ_DIM,
     ConeType.POS: "l",
     ConeType.SOC: "q",
     ConeType.PSD: "s",
