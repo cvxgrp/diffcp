@@ -90,7 +90,7 @@ ext_modules = [_diffcp]
 
 setup(
     name='diffcp',
-    version="1.0.17",
+    version="1.0.18",
     author="Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, Walaa Moursi",
     long_description=long_description,
     long_description_content_type="text/markdown",
