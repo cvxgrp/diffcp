@@ -50,9 +50,9 @@ def test_warm_start():
     n = 10
     A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
     x, y, s, _, _ = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, eps=1e-11, solve_method="SCS")
+        A, b, c, cone_dims, eps=1e-9, solve_method="SCS")
     x_p, y_p, s_p, _, _ = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1, solve_method="SCS")
+        A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1, solve_method="SCS", eps=1e-9)
 
     np.testing.assert_allclose(x, x_p, atol=1e-7)
     np.testing.assert_allclose(y, y_p, atol=1e-7)
