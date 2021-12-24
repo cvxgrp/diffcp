@@ -131,7 +131,7 @@ def test_proj_exp():
                           cp.norm(var[3:6] - x[3:6]) +
                           cp.norm(var[6:9] - x[6:9]))
         prob = cp.Problem(obj, constr)
-        prob.solve(solver="SCS", eps=1e-12, max_iters=1000)
+        prob.solve(solver="SCS", eps=1e-12, max_iters=20_000)
         p = cone_lib._proj(x, cone_lib.EXP, dual=False)
         np.testing.assert_allclose(p, var.value, atol=1e-6)
         # x + Pi_{exp}(-x) = Pi_{exp_dual}(x)
