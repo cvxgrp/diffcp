@@ -61,8 +61,8 @@ def test_warm_start():
 
 def test_threading():
     np.random.seed(0)
-    test_rtol = 1e-4
-    test_atol = 1e-9
+    test_rtol = 1e-3
+    test_atol = 1e-8
     m = 20
     n = 10
     As, bs, cs, cone_dicts = [], [], [], []
