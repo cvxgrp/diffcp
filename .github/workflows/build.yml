@@ -61,6 +61,7 @@ jobs:
       - name: Test
         run: |
           pytest
+          rm -rf build/
 
       - name: Build wheels
         if: ${{'True' == 'True' || env.DEPLOY == 'True'}}
