@@ -62,11 +62,20 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-18.04, macos-10.15, windows-2019 ]
-        python-version: [ 3.6, 3.7, 3.8, 3.9, "3.10" ]
+        python-version: [ 3.6, 3.7, 3.9, "3.10" ]
+        include:
+          - os: ubuntu-18.04
+            python-version: 3.8
+            single_action_config: "True"
+          - os: macos-10.15
+            python-version: 3.8
+          - os: windows-2019
+            python-version: 3.8
 
     env:
       RUNNER_OS: ${{ matrix.os }}
       PYTHON_VERSION: ${{ matrix.python-version }}
+      SINGLE_ACTION_CONFIG: "${{ matrix.single_action_config == 'True' }}"
       PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
       PYPI_USER: ${{ secrets.PYPI_USER }}
       PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -88,7 +97,7 @@ jobs:
         if: ${{env.DEPLOY == 'True'}}
         env:
           CIBW_BUILD: "cp3${{env.PYTHON_SUBVERSION}}-*"
-          CIBW_SKIP: "*-win32 *_i686"
+          CIBW_SKIP: "*-win32 *_i686 *-musllinux*"
         uses: joerick/cibuildwheel@v2.3.1
 
       - name: Build source
