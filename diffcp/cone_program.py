@@ -48,7 +48,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
             means serial and n_jobs_forward = -1 defaults to the number of CPUs (default=-1).
         n_jobs_backward - Number of jobs to use in the backward pass. n_jobs_backward = 1
             means serial and n_jobs_backward = -1 defaults to the number of CPUs (default=-1).
-        mode - Differentiation mode in ["lsqr", "dense"].
+        mode - Differentiation mode in ["lsqr", "lsmr", "dense"].
         warm_starts - A list of warm starts.
         kwargs - kwargs sent to scs.
 
@@ -191,7 +191,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
           exponential cones. See SCS documentation for more details.
       warm_start: (optional) A tuple (x, y, s) at which to warm-start SCS.
       mode: (optional) Which mode to compute derivative with, options are
-          ["dense", "lsqr"].
+          ["dense", "lsqr", "lsmr"].
       solve_method: (optional) Name of solver to use; SCS or ECOS.
       kwargs: (optional) Keyword arguments to send to the solver.
 
@@ -226,9 +226,9 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
 
 def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         warm_start=None, mode='lsqr', raise_on_error=True, **kwargs):
-    if mode not in ["dense", "lsqr"]:
+    if mode not in ["dense", "lsqr", "lsmr"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
-                         "'dense' and 'lsqr'".format(mode))
+                         "'dense', 'lsqr' and 'lsmr'".format(mode))
 
     if np.isnan(A.data).any():
         raise RuntimeError("Found a NaN in A.")
@@ -247,9 +247,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
 
     if solve_method is None:
         psd_cone = ('s' in cone_dict) and (cone_dict['s'] != [])
-        ep_cone = ('ep' in cone_dict) and (cone_dict['ep'] != 0)
         ed_cone = ('ed' in cone_dict) and (cone_dict['ed'] != 0)
-        if psd_cone or ep_cone or ed_cone:
+        if psd_cone or ed_cone:
             solve_method = "SCS"
         else:
             solve_method = "ECOS"
@@ -305,15 +304,14 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         x = result["x"]
         y = result["y"]
         s = result["s"]
+
     elif solve_method == "ECOS":
         if warm_start is not None:
             raise ValueError('ECOS does not support warmstart.')
         if ('s' in cone_dict) and (cone_dict['s'] != []):
             raise ValueError("PSD cone not supported by ECOS.")
-        if ('ep' in cone_dict) and (cone_dict['ep'] != 0):
-            raise NotImplementedError("Exponential cones not supported yet.")
         if ('ed' in cone_dict) and (cone_dict['ed'] != 0):
-            raise NotImplementedError("Exponential cones not supported yet.")
+            raise NotImplementedError("Dual exponential cones not supported yet.")
         if warm_start is not None:
             raise ValueError("ECOS does not support warm starting.")
         len_eq = cone_dict[cone_lib.EQ_DIM]
@@ -336,6 +334,14 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             cone_dict_ecos['l'] = cone_dict['l']
         if 'q' in cone_dict:
             cone_dict_ecos['q'] = cone_dict['q']
+        if 'ep' in cone_dict:
+            cone_dict_ecos['e'] = cone_dict['ep']
+            # flip G and H from SCS- to ECOS- convention
+            G_ecos = G_ecos.tolil()
+            for ep in range(cone_dict['ep']):
+                G_ecos[-(ep+1)*3+1, :], G_ecos[-(ep+1)*3+2, :] = G_ecos[-(ep+1)*3+2, :], G_ecos[-(ep+1)*3+1, :]
+                H_ecos[-(ep+1)*3+1], H_ecos[-(ep+1)*3+2] = H_ecos[-(ep+1)*3+2], H_ecos[-(ep+1)*3+1]
+            G_ecos = G_ecos.tocsc()
         if A_ecos is not None and A_ecos.nnz == 0 and np.prod(A_ecos.shape) > 0:
             raise ValueError("ECOS cannot handle sparse data with nnz == 0.")
 
@@ -344,6 +350,10 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
                               cone_dict_ecos, A_ecos, B_ecos, **kwargs)
         x = solution["x"]
         y = np.append(solution["y"], solution["z"])
+        if 'ep' in cone_dict:
+            # flip y from ECOS- to SCS- convention
+            for ep in range(cone_dict['ep']):
+                y[-(ep+1)*3+1], y[-(ep+1)*3+2] = y[-(ep+1)*3+2], y[-(ep+1)*3+1]
         s = b - A @ x
 
         result = {
@@ -397,7 +407,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         Q_dense = Q.todense()
         M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
         MT = M.T
-    else:
+    elif mode in ("lsqr", "lsmr"):
         M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
         MT = M.transpose()
 
@@ -424,8 +434,11 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dz = np.zeros(rhs.size)
         elif mode == "dense":
             dz = _diffcp._solve_derivative_dense(M, MT, rhs)
-        else:
+        elif mode == "lsqr":
             dz = _diffcp.lsqr(M, rhs).solution
+        elif mode == "lsmr":
+            M_sp = sparse.linalg.LinearOperator(dQ.shape, matvec=M.matvec, rmatvec=M.rmatvec)
+            dz, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(M_sp, rhs, maxiter=10*M_sp.shape[0], atol=1e-12, btol=1e-12)
 
         du, dv, dw = np.split(dz, [n, n + m])
         dx = du - x * dw
@@ -443,6 +456,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             (`dA`, `db`, `dc`), the result of applying the adjoint to the
             perturbations; the sparsity pattern of `dA` matches that of `A`.
         """
+
         dw = -(x @ dx + y @ dy + s @ ds)
         dz = np.concatenate(
             [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
@@ -451,8 +465,11 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             r = np.zeros(dz.shape)
         elif mode == "dense":
             r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
-        else:
+        elif mode == "lsqr":
             r = _diffcp.lsqr(MT, dz).solution
+        elif mode == "lsmr":
+            MT_sp = sparse.linalg.LinearOperator(dz.shape*2, matvec=MT.matvec, rmatvec=MT.rmatvec)
+            r, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(MT_sp, dz, maxiter=10*MT_sp.shape[0], atol=1e-10, btol=1e-10)
 
         values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
         dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
