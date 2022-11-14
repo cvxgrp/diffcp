@@ -47,7 +47,7 @@ jobs:
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
             conda install scipy=1.7 numpy=1.21 mkl cvxpy scs pytest pip
           fi
-          python setup.py install
+          python -m pip install .
 
       - name: Test
         run: |
