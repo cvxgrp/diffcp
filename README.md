@@ -22,7 +22,7 @@ You will need a C++11-capable compiler to build `diffcp`.
 * [pybind11](https://github.com/pybind/pybind11/tree/stable) >= 2.4
 * [threadpoolctl](https://github.com/joblib/threadpoolctl) >= 1.1
 * [ECOS](https://github.com/embotech/ecos-python) >= 2.0.10
-* Python 3.x
+* Python >= 3.7
 
 `diffcp` uses Eigen; Eigen operations can be automatically vectorized by compilers. To enable vectorization, install with
 
