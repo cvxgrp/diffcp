@@ -102,7 +102,7 @@ setup(
         "scipy >= 1.1.0",
         "pybind11 >= 2.4",
         "threadpoolctl >= 1.1",
-        "ecos"],
+        "ecos >= 2.0.10"],
     url="http://github.com/cvxgrp/diffcp/",
     ext_modules=ext_modules,
     license="Apache License, Version 2.0",
