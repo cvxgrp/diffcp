@@ -93,7 +93,7 @@ jobs:
           echo "PYTHON_SUBVERSION=$(echo $PYTHON_VERSION | cut -c 3-)" >> $GITHUB_ENV
           echo "DEPLOY_PYPI_SOURCE=$( [[ $PYTHON_VERSION == 3.8 && $RUNNER_OS == 'macOS' ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV
           #echo "DEPLOY=$( [[ $GITHUB_EVENT_NAME == 'push' && $GITHUB_REF == 'refs/tags'* ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV        
-          echo "DEPLOY='True'" >> $GITHUB_ENV        
+          echo "DEPLOY=$(echo 'True')" >> $GITHUB_ENV        
 
       - name: Build wheels
         if: ${{env.DEPLOY == 'True'}}
