@@ -63,7 +63,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, macos-11, windows-2019 ]
-        python-version: [ 3.6, 3.7, 3.9, "3.10" ]
+        python-version: [ 3.7, 3.9, "3.10" ]
         include:
           - os: ubuntu-20.04
             python-version: 3.8
@@ -92,8 +92,7 @@ jobs:
         run: |
           echo "PYTHON_SUBVERSION=$(echo $PYTHON_VERSION | cut -c 3-)" >> $GITHUB_ENV
           echo "DEPLOY_PYPI_SOURCE=$( [[ $PYTHON_VERSION == 3.8 && $RUNNER_OS == 'macOS' ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV
-          #echo "DEPLOY=$( [[ $GITHUB_EVENT_NAME == 'push' && $GITHUB_REF == 'refs/tags'* ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV        
-          echo "DEPLOY=$(echo 'True')" >> $GITHUB_ENV        
+          echo "DEPLOY=$( [[ $GITHUB_EVENT_NAME == 'push' && $GITHUB_REF == 'refs/tags'* ]] && echo 'True' || echo 'False' )" >> $GITHUB_ENV
 
       - name: Build wheels
         if: ${{env.DEPLOY == 'True'}}
