@@ -41,7 +41,7 @@ jobs:
         # scipy and numpy versions are chosen to match cvxpy
         run: |
           if [[ "$PYTHON_VERSION" == "3.7" ]] || [[ "$PYTHON_VERSION" == "3.8" ]]; then
-            conda install scipy=1.5 numpy=1.19 mkl scs pytest
+            conda install scipy=1.5 numpy=1.16 mkl scs pytest
           elif [[ "$PYTHON_VERSION" == "3.9" ]]; then
             conda install scipy=1.5 numpy=1.19 mkl scs pytest
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
