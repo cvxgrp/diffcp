@@ -336,12 +336,14 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             cone_dict_ecos['q'] = cone_dict['q']
         if 'ep' in cone_dict:
             cone_dict_ecos['e'] = cone_dict['ep']
-            # flip G and H from SCS- to ECOS- convention
-            G_ecos = G_ecos.tolil()
-            for ep in range(cone_dict['ep']):
-                G_ecos[-(ep+1)*3+1, :], G_ecos[-(ep+1)*3+2, :] = G_ecos[-(ep+1)*3+2, :], G_ecos[-(ep+1)*3+1, :]
-                H_ecos[-(ep+1)*3+1], H_ecos[-(ep+1)*3+2] = H_ecos[-(ep+1)*3+2], H_ecos[-(ep+1)*3+1]
-            G_ecos = G_ecos.tocsc()
+            # Only necessary if any exponential cones are present.
+            if cone_dict['ep'] > 0:
+                # flip G and H from SCS- to ECOS- convention
+                G_ecos = G_ecos.tolil()
+                for ep in range(cone_dict['ep']):
+                    G_ecos[-(ep+1)*3+1, :], G_ecos[-(ep+1)*3+2, :] = G_ecos[-(ep+1)*3+2, :], G_ecos[-(ep+1)*3+1, :]
+                    H_ecos[-(ep+1)*3+1], H_ecos[-(ep+1)*3+2] = H_ecos[-(ep+1)*3+2], H_ecos[-(ep+1)*3+1]
+                G_ecos = G_ecos.tocsc()
         if A_ecos is not None and A_ecos.nnz == 0 and np.prod(A_ecos.shape) > 0:
             raise ValueError("ECOS cannot handle sparse data with nnz == 0.")
 
