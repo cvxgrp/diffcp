@@ -8,14 +8,14 @@ on:
         tags:
           - '*'
 
+# https://docs.github.com/en/actions/using-jobs/using-concurrency#example-using-a-fallback-value
+# Only cancels-in-progress on PRs (head_ref only defined in PR, fallback run_id always unique)
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  cleanup-runs:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: rokroskar/workflow-run-cleanup-action@master
-      env:
-        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-    if: "!startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/master'"
+
   build:
     runs-on: ${{ matrix.os }}
     defaults:
@@ -60,8 +60,8 @@ jobs:
           rm -rf build/
 
   build_wheels:
-    # needs: build
-
+    needs: build
+    if: ${{github.event_name == 'push'}}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
