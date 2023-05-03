@@ -205,7 +205,7 @@ LinearOperator _dprojection_exp(const Vector &x, bool dual) {
         // TODO(akshayka): log a warning
         s = std::abs(r);
       }
-      double l = t - x_i[2];
+      double l = rs[2] - x_i[2];
       double alpha = std::exp(r / s);
       double beta = l * r / (s * s) * alpha;
 
