@@ -353,3 +353,39 @@ def test_get_nonzeros():
     assert A.nonzero()[0].size, 4 * 3 - 1
     A.eliminate_zeros()
     assert A.nnz, 4 * 3 - 1
+
+
+def test_dprojection_exp():
+    # variables
+    x_ = cp.Variable()
+
+    # parameters
+    _lam = cp.Parameter(1, nonneg=True)
+    _lam.value = np.ones(1)
+
+    # objective
+    objective = cp.Maximize(x_ + _lam*(cp.log(1+x_) + cp.log(1-x_)))
+
+    problem = cp.Problem(objective)
+
+    A, b, c, cone_dims = utils.scs_data_from_cvxpy_problem(problem)
+
+    x, y, s, D, DT = cone_prog.solve_and_derivative(A,
+                                                    b,
+                                                    c,
+                                                    cone_dims,
+                                                    solve_method="ECOS",
+                                                    mode="dense")
+
+    dlam = 1e-6
+    dA = utils.get_random_like(A, lambda n: np.zeros(n))
+    db = np.zeros(b.size)
+    dc = np.zeros(c.size)
+    dc[1] = dc[1] - dlam  # the minus sign stems from the fact that c =  [-1., -1., -1.]
+    dc[2] = dc[2] - dlam  # the minus sign stems from the fact that c =  [-1., -1., -1.]
+
+    dx, dy, ds = D(dA, db, dc)
+
+    analytical = -1+_lam.value/np.sqrt(_lam.value**2+1)
+
+    assert abs(analytical[0]-dx[0]/dlam) < 1e-6
