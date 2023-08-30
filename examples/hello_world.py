@@ -6,7 +6,7 @@ np.set_printoptions(precision=5, suppress=True)
 
 
 cone_dict = {
-    'f': 3,
+    'z': 3,
     'l': 3,
     'q': [5]
 }
@@ -19,7 +19,7 @@ np.random.seed(0)
 A, b, c = utils.random_cone_prog(m, n, cone_dict)
 
 m, n = A.shape
-x, y, s, D, DT = diffcp.solve_and_derivative(A, b, c, cone_dict)
+x, y, s, D, DT = diffcp.solve_and_derivative(A, b, c, cone_dict, solve_method="Clarabel")
 
 # evaluate the derivative
 nonzeros = A.nonzero()

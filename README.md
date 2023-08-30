@@ -22,6 +22,7 @@ You will need a C++11-capable compiler to build `diffcp`.
 * [pybind11](https://github.com/pybind/pybind11/tree/stable) >= 2.4
 * [threadpoolctl](https://github.com/joblib/threadpoolctl) >= 1.1
 * [ECOS](https://github.com/embotech/ecos-python) >= 2.0.10
+* [Clarabel](https://github.com/oxfordcontrol/Clarabel.rs) >= 0.5.1
 * Python >= 3.7
 
 `diffcp` uses Eigen; Eigen operations can be automatically vectorized by compilers. To enable vectorization, install with
@@ -73,7 +74,7 @@ functions for evaluating the derivative and its adjoint (transpose).
 These functions respectively compute right and left multiplication of the derivative
 of the solution map at `A`, `b`, and `c` by a vector.
 The `solver` argument determines which solver to use; the available solvers
-are `solver="SCS"` and `solver="ECOS"`.
+are `solver="SCS"`, `solver="ECOS"`, and `solver="Clarabel"`.
 If no solver is specified, `diffcp` will choose the solver itself.
 In the case that the problem is not solved, i.e. the solver fails for some reason, we will raise
 a `SolverError` Exception.
