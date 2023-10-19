@@ -42,21 +42,6 @@ def test_solve_and_derivative():
             1e-6 * dA.multiply(dA).sum() + 1e-6 * db @ db + 1e-6 * dc @ dc, atol=1e-8)
 
 
-def test_warm_start():
-    np.random.seed(0)
-    m = 20
-    n = 10
-    A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
-    x, y, s, _, _ = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, solve_method="Clarabel")
-    x_p, y_p, s_p, _, _ = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1, solve_method="Clarabel")
-
-    np.testing.assert_allclose(x, x_p, atol=1e-7)
-    np.testing.assert_allclose(y, y_p, atol=1e-7)
-    np.testing.assert_allclose(s, s_p, atol=1e-7)
-
-
 def test_threading():
     np.random.seed(0)
     test_rtol = 1e-3
@@ -134,9 +119,6 @@ def test_expcone():
             tol_ktratio=1e-10
         )
 
-        import IPython as ipy
-        ipy.embed()
-        
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
         np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)

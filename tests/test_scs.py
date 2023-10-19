@@ -121,9 +121,6 @@ def test_expcone():
                                                                       mode=mode,
                                                                       eps=1e-10)
         
-        import IPython as ipy
-        ipy.embed()
-
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
         np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
