@@ -417,7 +417,11 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             cones += [clarabel.ExponentialConeT()] * v
 
         kwargs.setdefault("verbose", False)
-        settings = clarabel.DefaultSettings(**kwargs)
+        settings = clarabel.DefaultSettings()
+
+        for key, value in kwargs.items():
+            setattr(settings, key, value)
+
         solver = clarabel.DefaultSolver(P,c,A,b,cones,settings)
         solution = solver.solve()
 
