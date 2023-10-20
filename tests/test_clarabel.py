@@ -97,7 +97,6 @@ def test_expcone():
             tol_gap_rel=1e-13,
             tol_feas=1e-13,
             tol_ktratio=1e-13,
-            equilibrate_enable=False,
         )
         dA = utils.get_random_like(A, lambda n: np.random.normal(0, 1e-6, size=n))
         db = np.random.normal(0, 1e-6, size=b.size)
@@ -116,13 +115,8 @@ def test_expcone():
             tol_infeas_abs=1e-13,
             tol_infeas_rel=1e-13,
             tol_ktratio=1e-13,
-            equilibrate_enable=False,
         )
 
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
         np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
-
-
-if __name__ == "__main__":
-    test_expcone()

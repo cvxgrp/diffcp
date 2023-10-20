@@ -11,7 +11,6 @@ def test_solve_and_derivative():
     n = 10
 
     A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
-    print(cone_dims)
     for mode in ["lsqr", "dense"]:
         x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
             A, b, c, cone_dims, eps=1e-10, mode=mode, solve_method="SCS")
@@ -124,6 +123,3 @@ def test_expcone():
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
         np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
-
-if __name__ == "__main__":
-    test_expcone()
