@@ -3,6 +3,7 @@ import warnings
 from multiprocessing.pool import ThreadPool
 
 import ecos
+import clarabel
 import numpy as np
 import scipy.sparse as sparse
 import scs
@@ -192,7 +193,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
       warm_start: (optional) A tuple (x, y, s) at which to warm-start SCS.
       mode: (optional) Which mode to compute derivative with, options are
           ["dense", "lsqr", "lsmr"].
-      solve_method: (optional) Name of solver to use; SCS or ECOS.
+      solve_method: (optional) Name of solver to use; SCS, ECOS, or Clarabel.
       kwargs: (optional) Keyword arguments to send to the solver.
 
     Returns:
@@ -248,6 +249,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
     if solve_method is None:
         psd_cone = ('s' in cone_dict) and (cone_dict['s'] != [])
         ed_cone = ('ed' in cone_dict) and (cone_dict['ed'] != 0)
+
+        # TODO(sbarratt): consider setting default to clarabel
         if psd_cone or ed_cone:
             solve_method = "SCS"
         else:
@@ -386,7 +389,65 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
                           'setupTime': solution['info']['timing']['tsetup'],
                           'iter': solution['info']['iter'],
                           'pobj': solution['info']['pcost']}
+    elif solve_method == "Clarabel":
+        # for now set P to 0
+        P = sparse.csc_matrix((c.size, c.size))
 
+        cones = []
+        if "z" in cone_dict:
+            v = cone_dict["z"]
+            if v > 0:
+                cones.append(clarabel.ZeroConeT(v))
+        if "f" in cone_dict:
+            v = cone_dict["f"]
+            if v > 0:
+                cones.append(clarabel.ZeroConeT(v))
+        if "l" in cone_dict:
+            v = cone_dict["l"]
+            if v > 0:
+                cones.append(clarabel.NonnegativeConeT(v))
+        if "q" in cone_dict:
+            for v in cone_dict["q"]:
+                cones.append(clarabel.SecondOrderConeT(v))
+        if "s" in cone_dict:
+            for v in cone_dict["s"]:
+                cones.append(clarabel.PSDTriangleConeT(v))
+        if "ep" in cone_dict:
+            v = cone_dict["ep"]
+            cones += [clarabel.ExponentialConeT()] * v
+
+        kwargs.setdefault("verbose", False)
+        settings = clarabel.DefaultSettings()
+
+        for key, value in kwargs.items():
+            setattr(settings, key, value)
+
+        solver = clarabel.DefaultSolver(P,c,A,b,cones,settings)
+        solution = solver.solve()
+
+        result = {}
+        result["x"] = np.array(solution.x)
+        result["y"] = np.array(solution.z)
+        result["s"] = np.array(solution.s)
+
+        x, y, s = result["x"], result["y"], result["s"]
+
+        CLARABEL2SCS_STATUS_MAP = {
+            "Solved": "Solved",
+            "PrimalInfeasible": "Infeasible",
+            "DualInfeasible": "Unbounded",
+            "AlmostSolved": "Optimal Inaccurate",
+            "AlmostPrimalInfeasible": "Infeasible Inaccurate",
+            "AlmostDualInfeasible": "Unbounded Inaccurate",
+        }
+
+        result["info"] = {
+            "status": CLARABEL2SCS_STATUS_MAP.get(str(solution.status), "Failure"),
+            "solveTime": solution.solve_time,
+            "setupTime": -1,
+            "iter": solution.iterations,
+            "pobj": solution.obj_val,
+        }
     else:
         raise ValueError("Solver %s not supported." % solve_method)
 

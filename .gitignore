@@ -516,3 +516,5 @@ MigrationBackup/
 .ionide/
 
 .vscode
+.direnv/
+.envrc

@@ -13,7 +13,7 @@ def test_solve_and_derivative():
     A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
     for mode in ["lsqr", "dense"]:
         x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-            A, b, c, cone_dims, eps=1e-10, mode=mode, solve_method="SCS")
+            A, b, c, cone_dims, mode=mode, solve_method="Clarabel")
 
         dA = utils.get_random_like(
             A, lambda n: np.random.normal(0, 1e-6, size=n))
@@ -23,7 +23,7 @@ def test_solve_and_derivative():
         dx, dy, ds = derivative(dA, db, dc)
 
         x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
-            A + dA, b + db, c + dc, cone_dims, eps=1e-10, solve_method="SCS")
+            A + dA, b + db, c + dc, cone_dims, solve_method="Clarabel")
 
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
@@ -34,27 +34,12 @@ def test_solve_and_derivative():
             c, np.zeros(y.size), np.zeros(s.size))
 
         x_pert, _, _, _, _ = cone_prog.solve_and_derivative(
-            A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, eps=1e-10, solve_method="SCS")
+            A + 1e-6 * dA, b + 1e-6 * db, c + 1e-6 * dc, cone_dims, solve_method="Clarabel")
         objective_pert = c.T @ x_pert
 
         np.testing.assert_allclose(
             objective_pert - objective,
             1e-6 * dA.multiply(dA).sum() + 1e-6 * db @ db + 1e-6 * dc @ dc, atol=1e-8)
-
-
-def test_warm_start():
-    np.random.seed(0)
-    m = 20
-    n = 10
-    A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
-    x, y, s, _, _ = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, eps=1e-9, solve_method="SCS")
-    x_p, y_p, s_p, _, _ = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, warm_start=(x, y, s), max_iters=1, solve_method="SCS", eps=1e-9)
-
-    np.testing.assert_allclose(x, x_p, atol=1e-7)
-    np.testing.assert_allclose(y, y_p, atol=1e-7)
-    np.testing.assert_allclose(s, s_p, atol=1e-7)
 
 
 def test_threading():
@@ -101,25 +86,37 @@ def test_expcone():
     prob = cp.Problem(obj, const)
     A, b, c, cone_dims = utils.scs_data_from_cvxpy_problem(prob)
     for mode in ["lsqr", "lsmr", "dense"]:
-        x, y, s, D, DT = cone_prog.solve_and_derivative(A,
-                                                        b,
-                                                        c,
-                                                        cone_dims,
-                                                        solve_method="SCS",
-                                                        mode=mode,
-                                                        eps=1e-10)
+        x, y, s, D, DT = cone_prog.solve_and_derivative(
+            A,
+            b,
+            c,
+            cone_dims,
+            solve_method="Clarabel",
+            mode=mode,
+            tol_gap_abs=1e-13,
+            tol_gap_rel=1e-13,
+            tol_feas=1e-13,
+            tol_ktratio=1e-13,
+        )
         dA = utils.get_random_like(A, lambda n: np.random.normal(0, 1e-6, size=n))
         db = np.random.normal(0, 1e-6, size=b.size)
         dc = np.random.normal(0, 1e-6, size=c.size)
         dx, dy, ds = D(dA, db, dc)
-        x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(A + dA,
-                                                                      b + db,
-                                                                      c + dc,
-                                                                      cone_dims,
-                                                                      solve_method="SCS",
-                                                                      mode=mode,
-                                                                      eps=1e-10)
-        
+        x_pert, y_pert, s_pert, _, _ = cone_prog.solve_and_derivative(
+            A + dA,
+            b + db,
+            c + dc,
+            cone_dims,
+            solve_method="Clarabel",
+            mode=mode,
+            tol_gap_abs=1e-13,
+            tol_gap_rel=1e-13,
+            tol_feas=1e-13,
+            tol_infeas_abs=1e-13,
+            tol_infeas_rel=1e-13,
+            tol_ktratio=1e-13,
+        )
+
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
         np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
