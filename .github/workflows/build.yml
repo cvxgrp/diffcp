@@ -24,14 +24,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, macos-11, windows-2019 ]
-        python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11" ]
+        os: [ ubuntu-20.04, macos-11, windows-2022 ]
+        python-version: [ 3.8, 3.9, "3.10", "3.11" ]
 
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
@@ -40,9 +40,7 @@ jobs:
       - name: Install
         # scipy and numpy versions are chosen to match cvxpy
         run: |
-          if [[ "$PYTHON_VERSION" == "3.7" ]]; then
-            conda install scipy=1.5 numpy=1.16 mkl scs pytest pip
-          elif [[ "$PYTHON_VERSION" == "3.8" ]]; then
+          if [[ "$PYTHON_VERSION" == "3.8" ]]; then
             conda install scipy=1.5 numpy=1.17 mkl scs pytest pip
           elif [[ "$PYTHON_VERSION" == "3.9" ]]; then
             conda install scipy=1.5 numpy=1.19 mkl scs pytest pip
@@ -66,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, macos-11, windows-2019 ]
+        os: [ ubuntu-20.04, macos-11, windows-2022 ]
         python-version: [ 3.7, 3.9, "3.10", "3.11" ]
         include:
           - os: ubuntu-20.04
@@ -87,8 +85,8 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Set Additional Envs
@@ -101,8 +99,10 @@ jobs:
       - name: Build wheels
         env:
           CIBW_BUILD: "cp3${{env.PYTHON_SUBVERSION}}-*"
-          CIBW_SKIP: "*-win32 *_i686 *-musllinux*"
-        uses: pypa/cibuildwheel@v2.12.0
+          CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux*"
+          CIBW_ARCHS_MACOS: x86_64 universal2
+          CIBW_ARCHS_LINUX: auto aarch64
+        uses: pypa/cibuildwheel@v2.16.2
 
       - name: Build source
         if: ${{env.DEPLOY_PYPI_SOURCE == 'True'}}
@@ -122,7 +122,7 @@ jobs:
           twine upload --skip-existing --repository-url $PYPI_SERVER wheelhouse/* -u $PYPI_USER -p $PYPI_PASSWORD
 
       - name: Upload artifacts to github
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: ./wheelhouse
