@@ -31,12 +31,14 @@ def time_function(f, N=1):
 for n_jobs in range(1, 8):
     def f_forward():
         return diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
-                                                 n_jobs_forward=n_jobs, n_jobs_backward=n_jobs, solve_method="ECOS", verbose=False)
+                                                 n_jobs_forward=n_jobs, n_jobs_backward=n_jobs, solve_method="ECOS", verbose=False, 
+                                                 mode="lpgd", derivative_kwargs=dict(tau=1e-3, rho=0.0))
     xs, ys, ss, D_batch, DT_batch = diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
-                                                                      n_jobs_forward=1, n_jobs_backward=n_jobs, solve_method="ECOS", verbose=False)
+                                                                      n_jobs_forward=1, n_jobs_backward=n_jobs, solve_method="ECOS", verbose=False,
+                                                                      mode="lpgd", derivative_kwargs=dict(tau=1e-3, rho=0.0))
 
     def f_backward():
-        DT_batch(xs, ys, ss, mode="lsqr")
+        DT_batch(xs, ys, ss)
 
     mean_forward, std_forward = time_function(f_forward)
     mean_backward, std_backward = time_function(f_backward)
