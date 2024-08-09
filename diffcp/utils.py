@@ -36,3 +36,16 @@ def get_random_like(A, randomness):
     rows, cols = A.nonzero()
     values = randomness(A.nnz)
     return sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
+
+
+def regularize_P(P, rho, size):
+    """Regularizes the matrix P by adding rho * I to it."""
+    if rho > 0:
+        reg = rho * sparse.eye(size, format='csc')
+        if P is None:
+            P_reg = reg
+        else:
+            P_reg = P + reg
+    else:
+        P_reg = P
+    return P_reg

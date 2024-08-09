@@ -12,6 +12,8 @@ from threadpoolctl import threadpool_limits
 
 import _diffcp
 import diffcp.cones as cone_lib
+import copy
+from diffcp.utils import regularize_P
 
 
 def pi(z, cones):
@@ -49,7 +51,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
             means serial and n_jobs_forward = -1 defaults to the number of CPUs (default=-1).
         n_jobs_backward - Number of jobs to use in the backward pass. n_jobs_backward = 1
             means serial and n_jobs_backward = -1 defaults to the number of CPUs (default=-1).
-        mode - Differentiation mode in ["lsqr", "lsmr", "dense"].
+        mode - Differentiation mode in ["lsqr", "lsmr", "dense", "lpgd", "lpgd_right", "lpgd_left"].
         warm_starts - A list of warm starts.
         kwargs - kwargs sent to scs.
 
@@ -248,7 +250,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
           exponential cones. See SCS documentation for more details.
       warm_start: (optional) A tuple (x, y, s) at which to warm-start SCS.
       mode: (optional) Which mode to compute derivative with, options are
-          ["dense", "lsqr", "lsmr"].
+          ["dense", "lsqr", "lsmr", "lpgd", "lpgd_right", "lpgd_left"].
       solve_method: (optional) Name of solver to use; SCS, ECOS, or Clarabel.
       kwargs: (optional) Keyword arguments to send to the solver.
 
@@ -306,7 +308,7 @@ def solve_only(A, b, c, cone_dict, warm_start=None,
 
 
 def solve_internal(A, b, c, cone_dict, solve_method=None,
-        warm_start=None, raise_on_error=True, **kwargs):
+        warm_start=None, raise_on_error=True, P=None, **kwargs):
 
     if solve_method is None:
         psd_cone = ('s' in cone_dict) and (cone_dict['s'] != [])
@@ -335,6 +337,7 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
                 del kwargs["eps"]
 
         data = {
+            "P": P,
             "A": A,
             "b": b,
             "c": c
@@ -349,7 +352,7 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
         result = scs.solve(data, cone_dict, **kwargs)
 
         status = result["info"]["status"]
-        inaccurate_status = {"Solved/Inaccurate", "solved (inaccurate - reached max_iters)"}
+        inaccurate_status = {"Solved/Inaccurate", "solved (inaccurate - reached max_iters)", "solved (inaccurate - reached time_limit_secs)"}
         if status in inaccurate_status and "acceleration_lookback" not in kwargs:
             # anderson acceleration is sometimes unstable
             result = scs.solve(
@@ -367,6 +370,8 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
                 return result
 
     elif solve_method == "ECOS":
+        if P is not None:
+            raise ValueError("ECOS does not support quadratic objectives.")
         if warm_start is not None:
             raise ValueError('ECOS does not support warmstart.')
         if ('s' in cone_dict) and (cone_dict['s'] != []):
@@ -449,7 +454,8 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
                           'pobj': solution['info']['pcost']}
     elif solve_method == "Clarabel":
         # for now set P to 0
-        P = sparse.csc_matrix((c.size, c.size))
+        if P is None:
+            P = sparse.csc_matrix((c.size, c.size))
 
         cones = []
         if "z" in cone_dict:
@@ -510,10 +516,10 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
     return result
 
 def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
-        warm_start=None, mode='lsqr', raise_on_error=True, **kwargs):
-    if mode not in ["dense", "lsqr", "lsmr"]:
+        warm_start=None, mode='lsqr', raise_on_error=True, P=None, **kwargs):
+    if mode not in ["dense", "lsqr", "lsmr", "lpgd", "lpgd_right", "lpgd_left"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
-                         "'dense', 'lsqr' and 'lsmr'".format(mode))
+                         "'dense', 'lsqr', 'lsmr', 'lpgd', 'lpgd_right' and 'lpgd_left'".format(mode))
     if np.isnan(A.data).any():
         raise RuntimeError("Found a NaN in A.")
 
@@ -529,6 +535,11 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
     # eliminate explicit zeros in A, we no longer need them
     A.eliminate_zeros()
 
+    if "derivative_kwargs" in kwargs:
+        derivative_kwargs = kwargs.pop("derivative_kwargs")
+    else:
+        derivative_kwargs = {}
+    solver_kwargs = kwargs
     result = solve_internal(A, b, c, cone_dict, solve_method=solve_method,
         warm_start=warm_start, raise_on_error=raise_on_error, **kwargs)
     x = result["x"]
@@ -538,27 +549,29 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
     # pre-compute quantities for the derivative
     m, n = A.shape
     N = m + n + 1
-    cones = cone_lib.parse_cone_dict(cone_dict)
-    cones_parsed = cone_lib.parse_cone_dict_cpp(cones)
-    z = (x, y - s, np.array([1]))
-    u, v, w = z
 
-    Q = sparse.bmat([
-        [None, A.T, np.expand_dims(c, - 1)],
-        [-A, None, np.expand_dims(b, -1)],
-        [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
-    ])
+    if "lpgd" not in mode:  # pre-compute quantities for the derivative
+        cones = cone_lib.parse_cone_dict(cone_dict)
+        cones_parsed = cone_lib.parse_cone_dict_cpp(cones)
+        z = (x, y - s, np.array([1]))
+        u, v, w = z
 
-    D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
-    if mode == "dense":
-        Q_dense = Q.todense()
-        M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
-        MT = M.T
-    elif mode in ("lsqr", "lsmr"):
-        M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
-        MT = M.transpose()
+        Q = sparse.bmat([
+            [None, A.T, np.expand_dims(c, - 1)],
+            [-A, None, np.expand_dims(b, -1)],
+            [-np.expand_dims(c, -1).T, -np.expand_dims(b, -1).T, None]
+        ])
 
-    pi_z = pi(z, cones)
+        D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
+        if mode == "dense":
+            Q_dense = Q.todense()
+            M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
+            MT = M.T
+        elif mode in ("lsqr", "lsmr"):
+            M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
+            MT = M.transpose()
+
+        pi_z = pi(z, cones)
 
     def derivative(dA, db, dc, **kwargs):
         """Applies derivative at (A, b, c) to perturbations dA, db, dc
@@ -571,27 +584,32 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
            NumPy arrays dx, dy, ds, the result of applying the derivative
            to the perturbations.
         """
-        dQ = sparse.bmat([
-            [None, dA.T, np.expand_dims(dc, - 1)],
-            [-dA, None, np.expand_dims(db, -1)],
-            [-np.expand_dims(dc, -1).T, -np.expand_dims(db, -1).T, None]
-        ])
-        rhs = dQ @ pi_z
-        if np.allclose(rhs, 0):
-            dz = np.zeros(rhs.size)
-        elif mode == "dense":
-            dz = _diffcp._solve_derivative_dense(M, MT, rhs)
-        elif mode == "lsqr":
-            dz = _diffcp.lsqr(M, rhs).solution
-        elif mode == "lsmr":
-            M_sp = sparse.linalg.LinearOperator(dQ.shape, matvec=M.matvec, rmatvec=M.rmatvec)
-            dz, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(M_sp, rhs, maxiter=10*M_sp.shape[0], atol=1e-12, btol=1e-12)
 
-        du, dv, dw = np.split(dz, [n, n + m])
-        dx = du - x * dw
-        dy = D_proj_dual_cone.matvec(dv) - y * dw
-        ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
-        return -dx, -dy, -ds
+        if "lpgd" in mode:
+            dx, dy, ds = derivative_lpgd(dA, db, dc, mode=mode, **derivative_kwargs, **kwargs)
+            return dx, dy, ds
+        else:
+            dQ = sparse.bmat([
+                [None, dA.T, np.expand_dims(dc, - 1)],
+                [-dA, None, np.expand_dims(db, -1)],
+                [-np.expand_dims(dc, -1).T, -np.expand_dims(db, -1).T, None]
+            ])
+            rhs = dQ @ pi_z
+            if np.allclose(rhs, 0):
+                dz = np.zeros(rhs.size)
+            elif mode == "dense":
+                dz = _diffcp._solve_derivative_dense(M, MT, rhs)
+            elif mode == "lsqr":
+                dz = _diffcp.lsqr(M, rhs).solution
+            elif mode == "lsmr":
+                M_sp = sparse.linalg.LinearOperator(dQ.shape, matvec=M.matvec, rmatvec=M.rmatvec)
+                dz, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(M_sp, rhs, maxiter=10*M_sp.shape[0], atol=1e-12, btol=1e-12)
+
+            du, dv, dw = np.split(dz, [n, n + m])
+            dx = du - x * dw
+            dy = D_proj_dual_cone.matvec(dv) - y * dw
+            ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
+            return -dx, -dy, -ds
 
     def adjoint_derivative(dx, dy, ds, **kwargs):
         """Applies adjoint of derivative at (A, b, c) to perturbations dx, dy, ds
@@ -604,26 +622,261 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             perturbations; the sparsity pattern of `dA` matches that of `A`.
         """
 
-        dw = -(x @ dx + y @ dy + s @ ds)
-        dz = np.concatenate(
-            [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
+        if "lpgd" in mode:
+            dA, db, dc = adjoint_derivative_lpgd(dx, dy, ds, mode=mode, **derivative_kwargs, **kwargs)
+        else:
+            dw = -(x @ dx + y @ dy + s @ ds)
+            dz = np.concatenate(
+                [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
 
-        if np.allclose(dz, 0):
-            r = np.zeros(dz.shape)
-        elif mode == "dense":
-            r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
-        elif mode == "lsqr":
-            r = _diffcp.lsqr(MT, dz).solution
-        elif mode == "lsmr":
-            MT_sp = sparse.linalg.LinearOperator(dz.shape*2, matvec=MT.matvec, rmatvec=MT.rmatvec)
-            r, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(MT_sp, dz, maxiter=10*MT_sp.shape[0], atol=1e-10, btol=1e-10)
+            if np.allclose(dz, 0):
+                r = np.zeros(dz.shape)
+            elif mode == "dense":
+                r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
+            elif mode == "lsqr":
+                r = _diffcp.lsqr(MT, dz).solution
+            elif mode == "lsmr":
+                MT_sp = sparse.linalg.LinearOperator(dz.shape*2, matvec=MT.matvec, rmatvec=MT.rmatvec)
+                r, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(MT_sp, dz, maxiter=10*MT_sp.shape[0], atol=1e-10, btol=1e-10)
 
-        values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
-        dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
-        db = pi_z[n:n + m] * r[-1] - pi_z[-1] * r[n:n + m]
-        dc = pi_z[:n] * r[-1] - pi_z[-1] * r[:n]
+            values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
+            dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
+            db = pi_z[n:n + m] * r[-1] - pi_z[-1] * r[n:n + m]
+            dc = pi_z[:n] * r[-1] - pi_z[-1] * r[:n]
 
         return dA, db, dc
+    
+    def derivative_lpgd(dA, db, dc, mode, tau, rho):
+        """Computes standard finite difference derivative at (A, b, c) to perturbations dA, db, dc
+        with optional regularization rho.
+        Args:
+            dA: SciPy sparse matrix in CSC format; must have same sparsity
+                pattern as the matrix `A` from the cone program
+            db: NumPy array representing perturbation in `b`
+            dc: NumPy array representing perturbation in `c`
+            mode: Mode of the derivative computation; options are
+                ["lpgd", "lpgd_left", "lpgd_right"] corresponding to central, left, and right finite differences.
+            tau: Perturbation strength parameter
+            rho: Regularization parameter
+        Returns:
+           NumPy arrays dx, dy, ds, the result of applying the derivative
+           to the perturbations.
+        """
+
+        if tau is None or tau <= 0:
+            raise ValueError(f"LPGD mode requires tau > 0, got tau={tau}.")
+        if rho < 0:
+            raise ValueError(f"Finite difference mode requires rho >= 0, got rho={rho}.")
+        
+        if mode in ["lpgd", "lpgd_right"]:  # Perturb the problem to the right
+            x_right, y_right, s_right = compute_perturbed_solution(dA, db, dc, tau, rho, solve_method, solver_kwargs)
+
+        if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
+            x_left, y_left, s_left = compute_perturbed_solution(dA, db, dc, -tau, rho, solve_method, solver_kwargs)
+
+        if mode == "lpgd":
+            dx = (x_right - x_left) / (2 * tau)
+            dy = (y_right - y_left) / (2 * tau)
+            ds = (s_right - s_left) / (2 * tau)
+        elif mode == "lpgd_right":
+            dx = (x_right - x) / tau
+            dy = (y_right - y) / tau
+            ds = (s_right - s) / tau
+        elif mode == "lpgd_left":
+            dx = (x - x_left) / tau
+            dy = (y - y_left) / tau
+            ds = (s - s_left) / tau
+        else:
+            raise ValueError(f"Only modes 'lpgd', 'lpgd_left', 'lpgd_right' can be used, got {mode}.")
+        return dx, dy, ds
+
+    def compute_perturbed_solution(dA, db, dc, tau, rho, solve_method, solver_kwargs):
+        """
+        Computes the perturbed solution x_right, y_right, s_right at (A, b, c) with 
+        perturbations dA, db, dc and optional regularization rho.
+        
+        Args:
+            dA: SciPy sparse matrix in CSC format; must have same sparsity
+                pattern as the matrix `A` from the cone program
+            db: NumPy array representing perturbation in `b`
+            dc: NumPy array representing perturbation in `c`
+            tau: Perturbation strength parameter
+            rho: Regularization parameter
+            solve_method: Name of solver to use; SCS, ECOS, or Clarabel
+            solver_kwargs: Additional keyword arguments to send to the solver
+        Returns:
+            x_pert: Perturbed solution of the primal variable x
+            y_pert: Perturbed solution of the dual variable y
+            s_pert: Perturbed solution of the slack variable s
+        """
+
+        # Perturb the problem
+        A_pert = A + tau * dA
+        b_pert = b + tau * db
+        c_pert = c + tau * dc
+
+        # Regularize
+        P_reg = regularize_P(P, rho=rho, size=n)
+        c_pert_reg = c_pert - rho * x
+
+        # Set warm start
+        warm_start = (x, y, s)
+
+        # Solve the perturbed problem
+        result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
+                                     solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+        # Extract the solutions
+        x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
+        return x_pert, y_pert, s_pert
+    
+    def adjoint_derivative_lpgd(dx, dy, ds, mode, tau, rho):
+        """Lagrangian Proximal Gradient Descent (LPGD) [arxiv.org/abs/2407.05920]
+        Computes informative replacements for adjoint derivatives given incoming gradients dx, dy, ds, 
+        can be regarded as an efficient adjoint finite difference method.
+        Tau controls the perturbation strength. In the limit tau -> 0, LPGD computes the exact adjoint derivative.
+        For finite tau, LPGD computes an informative replacement of the adjoint derivative, avoiding degeneracies.
+        Rho controls the regularization strength. If rho > 0, the perturbed problem is regularized.
+
+        Args:
+            dx: NumPy array representing perturbation in `x`
+            dy: NumPy array representing perturbation in `y`
+            ds: NumPy array representing perturbation in `s`
+            mode: Mode of the adjoint derivative computation; options arem ["lpgd", "lpgd_left", "lpgd_right"]
+            tau: Perturbation strength parameter
+            rho: Regularization parameter
+        Returns:
+            (`dA`, `db`, `dc`), the result of applying the LPGD to the
+            perturbations; the sparsity pattern of `dA` matches that of `A`.
+        """
+
+        if tau is None or tau <= 0:
+            raise ValueError(f"Finite difference mode requires tau > 0, got tau={tau}.")
+        if rho < 0:
+            raise ValueError(f"Finite difference mode requires rho >= 0, got rho={rho}.")
+
+        if mode in ["lpgd", "lpgd_right"]:  # Perturb the problem to the right
+            x_right, y_right, _ = compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho, solve_method, solver_kwargs)
+
+        if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
+            x_left, y_left, _ = compute_adjoint_perturbed_solution(dx, dy, ds, -tau, rho, solve_method, solver_kwargs)
+
+        if mode == "lpgd":
+            dc = (x_right - x_left) / (2 * tau)
+            db = - (y_right - y_left) / (2 * tau)
+            dA_data = (y_right[rows] * x_right[cols] - y_left[rows] * x_left[cols]) / (2 * tau)
+        elif mode == "lpgd_right":
+            dc = (x_right - x) / tau
+            db = - (y_right - y) / tau
+            dA_data = (y_right[rows] * x_right[cols] - y[rows] * x[cols]) / tau
+        elif mode == "lpgd_left":
+            dc = (x - x_left) / tau
+            db = - (y - y_left) / tau
+            dA_data = (y[rows] * x[cols] - y_left[rows] * x_left[cols]) / tau
+        else:
+            raise ValueError(f"Only modes 'lpgd', 'lpgd_left', 'lpgd_right' can be used, got {mode}.")
+        
+        dA = sparse.csc_matrix((dA_data, (rows, cols)), shape=A.shape)
+        return dA, db, dc
+
+    def compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho, solve_method, solver_kwargs):
+        """
+        Computes the adjoint perturbed solution x_right, y_right, s_right (Lagrangian Proximal Map)
+        by solving the following perturbed problem with perturbations dx, dy, ds and perturbation parameters tau, rho:
+        argmin.     <x,Px> + <c,x> + tau (<dx,x> + <ds,s>) + rho/2 |x-x^*|^2
+        subject to  Ax + s = b-tau*dy
+                    s \in K
+
+        For ds=0 we solve
+        argmin.     <x,(P+rho*I)x> + <c+tau*dx-rho*x^*, x>
+        subject to  Ax + s = b-tau*dy
+                    s \in K
+        This is just a perturbed instance of the forward optimization problem.
+
+        For ds!=0 we rewrite the problem as an embedded problem.
+        We add a constraint x'=s, replace all appearances of s with x' and solve
+        argmin.     <[x, x'], [[P+rho*I,     0]; [x, x']> + <[c+tau*dx-rho*x^*, tau*ds-rho*s^*], [x, x']>
+                               [      0, rho*I]]
+        subject to  [[A,  I]; [x, x'] + [0; s] = [0; b-tau*dy]
+                     [0, -I]]
+                    s \in K
+        Note that we also add a regularizer on s (rho/2 |s-s^*|^2) in this case.
+        
+        Args:
+            dx: NumPy array representing perturbation in `x`
+            dy: NumPy array representing perturbation in `y`
+            ds: NumPy array representing perturbation in `s`
+            tau: Perturbation strength parameter
+            rho: Regularization parameter
+            solve_method: Name of solver to use; SCS, ECOS, or Clarabel
+            solver_kwargs: Additional keyword arguments to send to the solver
+        Returns:
+            x_pert: Perturbed solution of the primal variable x
+            y_pert: Perturbed solution of the dual variable y
+            s_pert: Perturbed solution of the slack variable s
+        """
+
+        # The cases ds = 0 and ds != 0 are handled separately, see docstring
+        if np.isclose(np.sum(np.abs(ds)), 0):
+            # Perturb problem
+            c_pert = c + tau * dx
+            b_pert = b - tau * dy
+
+            # Regularize
+            P_reg = regularize_P(P, rho=rho, size=n)
+            c_pert_reg = c_pert - rho * x
+
+            # Set warm start
+            warm_start = (x, y, s) if solve_method != "ECOS" else None
+
+            # Solve the perturbed problem
+            # TODO: If solve_method=='SCS' and rho==0, this can be sped up strongly by using solver.update
+            result_pert = solve_internal(A=A, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
+                                         solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+            # Extract the solutions
+            x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
+        else:
+            # Embed problem
+            A_emb = sparse.bmat([
+                [A, sparse.eye(m, format=A.format)],
+                [None, -sparse.eye(m, format=A.format)]
+            ]).tocsc()
+            b_emb = np.hstack([b, np.zeros(m)])
+            c_emb = np.hstack([c, np.zeros(m)])
+            if P is not None:
+                P_emb = sparse.bmat([
+                    [P, None],
+                    [None, np.zeros((m, m))]
+                ]).tocsc()
+            else:
+                P_emb = None
+            cone_dict_emb = copy.deepcopy(cone_dict)
+            if 'z' in cone_dict_emb:
+                cone_dict_emb['z'] += m
+            else:
+                cone_dict_emb['z'] = m
+
+            # Perturb problem
+            b_emb_pert = b_emb - tau * np.hstack([dy, np.zeros(m)])
+            c_emb_pert = c_emb + tau * np.hstack([dx, ds])
+            
+            # Regularize
+            P_emb_reg = regularize_P(P_emb, rho=rho, size=n+m)
+            c_emb_pert_reg = c_emb_pert - rho * np.hstack([x, s])
+
+            # Set warm start
+            x_ws = np.hstack([x, s])
+            y_ws = np.hstack([y, y])
+            s_ws = np.hstack([s, s])
+            warm_start = (x_ws, y_ws, s_ws) if solve_method != "ECOS" else None
+
+            # Solve the embedded problem
+            result_pert = solve_internal(A=A_emb, b=b_emb_pert, c=c_emb_pert_reg, P=P_emb_reg, cone_dict=cone_dict_emb, 
+                                         solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+            # Extract the solutions
+            x_pert = result_pert['x'][:n]
+            y_pert = result_pert['y'][:m]
+            s_pert = result_pert['x'][n:n+m]
+        return x_pert, y_pert, s_pert
 
     result["D"] = derivative
     result["DT"] = adjoint_derivative
