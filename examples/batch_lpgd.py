@@ -30,9 +30,9 @@ def time_function(f, N=1):
 for n_jobs in range(1, 5):
     def f_forward():
         return diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
-                n_jobs_forward=n_jobs, n_jobs_backward=n_jobs, mode='lpgd', solve_method="Clarabel")
+                n_jobs_forward=n_jobs, n_jobs_backward=n_jobs)
     xs, ys, ss, D_batch, DT_batch = diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
-                n_jobs_forward=1, n_jobs_backward=n_jobs, mode='lpgd', solve_method="Clarabel")
+                n_jobs_forward=1, n_jobs_backward=n_jobs, mode='lpgd_left')
     def f_backward():
         DT_batch(xs, ys, ss, tau=0.1, rho=0.1)
 

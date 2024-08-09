@@ -666,10 +666,18 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             raise ValueError(f"Finite difference mode requires rho >= 0, got rho={rho}.")
         
         if mode in ["lpgd", "lpgd_right"]:  # Perturb the problem to the right
-            x_right, y_right, s_right = compute_perturbed_solution(dA, db, dc, tau, rho)
+            try:
+                x_right, y_right, s_right = compute_perturbed_solution(dA, db, dc, tau, rho)
+            except SolverError as e:
+                raise ValueError(f"Computation of right-perturbed problem failed: {e}. "\
+                                  "Consider decresing tau or swiching to 'lpgd_left' mode.")
 
         if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
-            x_left, y_left, s_left = compute_perturbed_solution(dA, db, dc, -tau, rho)
+            try:
+                x_left, y_left, s_left = compute_perturbed_solution(dA, db, dc, -tau, rho)
+            except SolverError as e:
+                raise ValueError(f"Computation of left-perturbed problem failed: {e}. "\
+                                  "Consider decresing tau or swiching to 'lpgd_right' mode.")
 
         if mode == "lpgd":
             dx = (x_right - x_left) / (2 * tau)
@@ -718,12 +726,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         warm_start = (x, y, s)
 
         # Solve the perturbed problem
-        try:
-            result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
-                                        solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
-        except SolverError as e:
-            raise ValueError(f"Failed to solve perturbed problem: {e}. If it is infeasible consider decreasing "\
-                              "tau or switching to 'lpgd_left' or 'lpgd_right' mode.")
+        result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
+                                    solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
         # Extract the solutions
         x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
         return x_pert, y_pert, s_pert
@@ -753,10 +757,18 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             raise ValueError(f"Finite difference mode requires rho >= 0, got rho={rho}.")
 
         if mode in ["lpgd", "lpgd_right"]:  # Perturb the problem to the right
-            x_right, y_right, _ = compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho)
+            try:
+                x_right, y_right, _ = compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho)
+            except SolverError as e:
+                raise ValueError(f"Computation of right-perturbed problem failed: {e}. "\
+                                  "Consider decresing tau or swiching to 'lpgd_left' mode.")
 
         if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
-            x_left, y_left, _ = compute_adjoint_perturbed_solution(dx, dy, ds, -tau, rho)
+            try:
+                x_left, y_left, _ = compute_adjoint_perturbed_solution(dx, dy, ds, -tau, rho)
+            except SolverError as e:
+                raise ValueError(f"Computation of left-perturbed problem failed: {e}. "\
+                                  "Consider decresing tau or swiching to 'lpgd_right' mode.")
 
         if mode == "lpgd":
             dc = (x_right - x_left) / (2 * tau)
@@ -826,12 +838,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
 
             # Solve the perturbed problem
             # TODO: If solve_method=='SCS' and rho==0, this can be sped up strongly by using solver.update
-            try:
-                result_pert = solve_internal(A=A, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
-                                            solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
-            except SolverError as e:
-                raise ValueError(f"Failed to solve adjoint perturbed problem: {e}. If it is infeasible consider decreasing "\
-                                  "tau or switching to 'lpgd_left' or 'lpgd_right' mode.")
+            result_pert = solve_internal(A=A, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
+                                         solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
             # Extract the solutions
             x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
         else:
@@ -853,12 +861,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
                 warm_start = (np.hstack([x, s]), np.hstack([y, y]), np.hstack([s, s]))
 
             # Solve the embedded problem
-            try:
-                result_pert = solve_internal(A=A_emb, b=b_emb_pert, c=c_emb_pert_reg, P=P_emb_reg, cone_dict=cone_dict_emb, 
-                                            solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
-            except SolverError as e:
-                raise ValueError(f"Failed to solve adjoint perturbed problem: {e}. If it is infeasible consider decreasing "\
-                                  "tau or switching to 'lpgd_left' or 'lpgd_right' mode.")
+            result_pert = solve_internal(A=A_emb, b=b_emb_pert, c=c_emb_pert_reg, P=P_emb_reg, cone_dict=cone_dict_emb, 
+                                        solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
             # Extract the solutions
             x_pert = result_pert['x'][:n]
             y_pert = result_pert['y'][:m]
