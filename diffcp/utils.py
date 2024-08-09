@@ -1,6 +1,7 @@
 import diffcp.cones as cone_lib
 import numpy as np
 from scipy import sparse
+from copy import deepcopy
 
 
 def scs_data_from_cvxpy_problem(problem):
@@ -49,3 +50,25 @@ def regularize_P(P, rho, size):
     else:
         P_reg = P
     return P_reg
+
+def embed_problem(A, b, c, P, cone_dict):   
+    m = b.shape[0]         
+    A_emb = sparse.bmat([
+        [A, sparse.eye(m, format=A.format)],
+        [None, -sparse.eye(m, format=A.format)]
+    ]).tocsc()
+    b_emb = np.hstack([b, np.zeros(m)])
+    c_emb = np.hstack([c, np.zeros(m)])
+    if P is not None:
+        P_emb = sparse.bmat([
+            [P, None],
+            [None, np.zeros((m, m))]
+        ]).tocsc()
+    else:
+        P_emb = None
+    cone_dict_emb = deepcopy(cone_dict)
+    if 'z' in cone_dict_emb:
+        cone_dict_emb['z'] += m
+    else:
+        cone_dict_emb['z'] = m
+    return A_emb, b_emb, c_emb, P_emb, cone_dict_emb
