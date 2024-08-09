@@ -669,15 +669,15 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             try:
                 x_right, y_right, s_right = compute_perturbed_solution(dA, db, dc, tau, rho)
             except SolverError as e:
-                raise ValueError(f"Computation of right-perturbed problem failed: {e}. "\
-                                  "Consider decresing tau or swiching to 'lpgd_left' mode.")
+                raise SolverError(f"Computation of right-perturbed problem failed: {e}. "\
+                                   "Consider decresing tau or swiching to 'lpgd_left' mode.")
 
         if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
             try:
                 x_left, y_left, s_left = compute_perturbed_solution(dA, db, dc, -tau, rho)
             except SolverError as e:
-                raise ValueError(f"Computation of left-perturbed problem failed: {e}. "\
-                                  "Consider decresing tau or swiching to 'lpgd_right' mode.")
+                raise SolverError(f"Computation of left-perturbed problem failed: {e}. "\
+                                   "Consider decresing tau or swiching to 'lpgd_right' mode.")
 
         if mode == "lpgd":
             dx = (x_right - x_left) / (2 * tau)
@@ -760,15 +760,15 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             try:
                 x_right, y_right, _ = compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho)
             except SolverError as e:
-                raise ValueError(f"Computation of right-perturbed problem failed: {e}. "\
-                                  "Consider decresing tau or swiching to 'lpgd_left' mode.")
+                raise SolverError(f"Computation of right-perturbed problem failed: {e}. "\
+                                   "Consider decresing tau or swiching to 'lpgd_left' mode.")
 
         if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
             try:
                 x_left, y_left, _ = compute_adjoint_perturbed_solution(dx, dy, ds, -tau, rho)
             except SolverError as e:
-                raise ValueError(f"Computation of left-perturbed problem failed: {e}. "\
-                                  "Consider decresing tau or swiching to 'lpgd_right' mode.")
+                raise SolverError(f"Computation of left-perturbed problem failed: {e}. "\
+                                   "Consider decresing tau or swiching to 'lpgd_right' mode.")
 
         if mode == "lpgd":
             dc = (x_right - x_left) / (2 * tau)
@@ -809,7 +809,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         subject to  [[A,  I]; [x, x'] + [s'; s] = [b-tau*dy; 0]
                      [0, -I]]
                     (s', s) \in (0 \times K)
-        Note that we also add a regularizer on s (rho/2 |s-s^*|^2) in this case.
+        Note that we also add a regularizer on s in this case (rho/2 |s-s^*|^2).
         
         Args:
             dx: NumPy array representing perturbation in `x`
