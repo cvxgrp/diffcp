@@ -806,7 +806,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         We add a constraint x'=s, replace all appearances of s with x' and solve
         argmin.     <[x, x'], [[P+rho*I,     0]; [x, x']> + <[c+tau*dx-rho*x^*, tau*ds-rho*s^*], [x, x']>
                                [      0, rho*I]]
-        subject to  [[A,  I]; [x, x'] + [s'; s] = [0; b-tau*dy]
+        subject to  [[A,  I]; [x, x'] + [s'; s] = [b-tau*dy; 0]
                      [0, -I]]
                     (s', s) \in (0 \times K)
         Note that we also add a regularizer on s (rho/2 |s-s^*|^2) in this case.

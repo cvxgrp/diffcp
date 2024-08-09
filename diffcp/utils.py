@@ -51,7 +51,14 @@ def regularize_P(P, rho, size):
         P_reg = P
     return P_reg
 
-def embed_problem(A, b, c, P, cone_dict):   
+def embed_problem(A, b, c, P, cone_dict):
+    """Embeds the problem into a larger problem that allows costs on the slack variables
+    A_emb = [A, I; 0, -I]
+    b_emb = [b; 0]
+    c_emb = [c; 0]
+    P_emb = [P, 0; 0, 0]
+    cone_dict_emb = cone_dict with z shifted by m
+    """
     m = b.shape[0]         
     A_emb = sparse.bmat([
         [A, sparse.eye(m, format=A.format)],
