@@ -718,8 +718,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         warm_start = (x, y, s)
 
         # Solve the perturbed problem
-        result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
-                                     solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+        try:
+            result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
+                                        solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+        except SolverError as e:
+            raise ValueError(f"Failed to solve perturbed problem: {e}. If it is infeasible consider decreasing "\
+                              "tau or switching to 'lpgd_left' or 'lpgd_right' mode.")
         # Extract the solutions
         x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
         return x_pert, y_pert, s_pert
@@ -822,8 +826,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
 
             # Solve the perturbed problem
             # TODO: If solve_method=='SCS' and rho==0, this can be sped up strongly by using solver.update
-            result_pert = solve_internal(A=A, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
-                                         solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+            try:
+                result_pert = solve_internal(A=A, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
+                                            solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+            except SolverError as e:
+                raise ValueError(f"Failed to solve adjoint perturbed problem: {e}. If it is infeasible consider decreasing "\
+                                  "tau or switching to 'lpgd_left' or 'lpgd_right' mode.")
             # Extract the solutions
             x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
         else:
@@ -845,8 +853,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
                 warm_start = (np.hstack([x, s]), np.hstack([y, y]), np.hstack([s, s]))
 
             # Solve the embedded problem
-            result_pert = solve_internal(A=A_emb, b=b_emb_pert, c=c_emb_pert_reg, P=P_emb_reg, cone_dict=cone_dict_emb, 
-                                         solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+            try:
+                result_pert = solve_internal(A=A_emb, b=b_emb_pert, c=c_emb_pert_reg, P=P_emb_reg, cone_dict=cone_dict_emb, 
+                                            solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
+            except SolverError as e:
+                raise ValueError(f"Failed to solve adjoint perturbed problem: {e}. If it is infeasible consider decreasing "\
+                                  "tau or switching to 'lpgd_left' or 'lpgd_right' mode.")
             # Extract the solutions
             x_pert = result_pert['x'][:n]
             y_pert = result_pert['y'][:m]
