@@ -40,7 +40,7 @@ jobs:
       - name: Install
         # scipy and numpy versions are chosen to match cvxpy
         run: |
-          pip install cvxpy
+          pip install cvxpy pytest
           python -m pip install .
 
       - name: Test
