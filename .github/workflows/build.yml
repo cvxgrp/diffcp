@@ -58,6 +58,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install
+        run: |
+          pip install numpy scipy cvxpy pytest
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
