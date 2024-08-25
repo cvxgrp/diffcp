@@ -48,7 +48,6 @@ jobs:
           pytest
           rm -rf build/
 
-jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
