@@ -1,31 +1,3 @@
-# Lagrangian Proximal Gradient Descent - diffcp implementation
-
-This fork implements [Lagrangian proximal gradient descent (LPGD)](https://arxiv.org/abs/2407.05920) as an option for the conic program in diffcp.
-It can be understood as an efficient implementation of adjoint finite differences, enabling informative derivative replacements in the case of degenerate derivatives.
-The perturbation strength is controlled by the parameter tau, the parameter rho controls the regularization strength.
-Note: For the forward derivatives, LPGD computes standard finite differences with an optional regularization.
-
-Example usage:
-```python
-x, y, s, D, DT = solve_and_derivative(A, b, c, cone_dict, mode='lpgd')
-...
-dx, dy, ds = D(dA, db, dc, tau=0.1, rho=0.1)
-...
-dA, db, dc = DT(dx, dy, ds, tau=0.1, rho=0.1)
-```
-
-Alternatively the derivative keyword arguments can be passed directly on the forward pass:
-```python
-x, y, s, D, DT = solve_and_derivative(A, b, c, cone_dict, mode='lpgd', derivative_kwargs=dict(tau=0.1, rho=0.1))
-...
-dx, dy, ds = D(dA, db, dc)
-...
-dA, db, dc = DT(dx, dy, ds)
-```
-
-
-Below follows the original Readme:
-
 [![Build Status](http://github.com/cvxgrp/diffcp/workflows/build/badge.svg?event=push)](https://github.com/cvxgrp/diffcp/actions/workflows/build.yml)
 
 # diffcp
@@ -123,6 +95,8 @@ These inputs must conform to the [SCS convention](https://github.com/bodono/scs-
 * `diffcp.EXP` for a product of exponential cones.
 
 The values in `cone_dict` denote the sizes of each cone; the values of `diffcp.SOC`, `diffcp.PSD`, and `diffcp.EXP` should be lists. The order of the rows of `A` must match the ordering of the cones given above. For more details, consult the [SCS documentation](https://github.com/cvxgrp/scs/blob/master/README.md).
+
+To enable [Lagrangian Proximal Gradient Descent (LPGD)](https://arxiv.org/abs/2407.05920) differentiation of the conic program based on efficient finite-differences, provide the `mode=LPGD` option along with the argument `derivative_kwargs=dict(tau=0.1, rho=0.1)` to specify the perturbation and regularization strength. Alternatively, the derivative kwargs can also be passed directly to the returned `derivative` and `adjoint_derivative` function.
 
 #### Return value
 The function `solve_and_derivative` returns a tuple
