@@ -654,7 +654,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             db: NumPy array representing perturbation in `b`
             dc: NumPy array representing perturbation in `c`
             tau: Perturbation strength parameter
-            rho: Regularization parameter
+            rho: Regularization strength parameter
         Returns:
            NumPy arrays dx, dy, ds, the result of applying the derivative
            to the perturbations.
@@ -670,14 +670,14 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
                 x_right, y_right, s_right = compute_perturbed_solution(dA, db, dc, tau, rho)
             except SolverError as e:
                 raise SolverError(f"Computation of right-perturbed problem failed: {e}. "\
-                                   "Consider decresing tau or swiching to 'lpgd_left' mode.")
+                                   "Consider decreasing tau or swiching to 'lpgd_left' mode.")
 
         if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
             try:
                 x_left, y_left, s_left = compute_perturbed_solution(dA, db, dc, -tau, rho)
             except SolverError as e:
                 raise SolverError(f"Computation of left-perturbed problem failed: {e}. "\
-                                   "Consider decresing tau or swiching to 'lpgd_right' mode.")
+                                   "Consider decreasing tau or swiching to 'lpgd_right' mode.")
 
         if mode == "lpgd":
             dx = (x_right - x_left) / (2 * tau)
@@ -706,7 +706,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             db: NumPy array representing perturbation in `b`
             dc: NumPy array representing perturbation in `c`
             tau: Perturbation strength parameter
-            rho: Regularization parameter
+            rho: Regularization strength parameter
         Returns:
             x_pert: Perturbed solution of the primal variable x
             y_pert: Perturbed solution of the dual variable y
@@ -718,7 +718,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         b_pert = b + tau * db
         c_pert = c + tau * dc
 
-        # Regularize
+        # Regularize: Effectively adds a rho/2 |x-x^*|^2 term to the objective
         P_reg = regularize_P(P, rho=rho, size=n)
         c_pert_reg = c_pert - rho * x
 
@@ -745,7 +745,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dy: NumPy array representing perturbation in `y`
             ds: NumPy array representing perturbation in `s`
             tau: Perturbation strength parameter
-            rho: Regularization parameter
+            rho: Regularization strength parameter
         Returns:
             (`dA`, `db`, `dc`), the result of applying the LPGD to the
             perturbations; the sparsity pattern of `dA` matches that of `A`.
@@ -761,14 +761,14 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
                 x_right, y_right, _ = compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho)
             except SolverError as e:
                 raise SolverError(f"Computation of right-perturbed problem failed: {e}. "\
-                                   "Consider decresing tau or swiching to 'lpgd_left' mode.")
+                                   "Consider decreasing tau or swiching to 'lpgd_left' mode.")
 
         if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
             try:
                 x_left, y_left, _ = compute_adjoint_perturbed_solution(dx, dy, ds, -tau, rho)
             except SolverError as e:
                 raise SolverError(f"Computation of left-perturbed problem failed: {e}. "\
-                                   "Consider decresing tau or swiching to 'lpgd_right' mode.")
+                                   "Consider decreasing tau or swiching to 'lpgd_right' mode.")
 
         if mode == "lpgd":
             dc = (x_right - x_left) / (2 * tau)
@@ -791,7 +791,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
     def compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho):
         """
         Computes the adjoint perturbed solution x_right, y_right, s_right (Lagrangian Proximal Map)
-        by solving the following perturbed problem with perturbations dx, dy, ds and perturbation parameters tau, rho:
+        by solving the following perturbed problem with perturbations dx, dy, ds 
+        and perturbation/regularization parameters tau/rho:
         argmin.     <x,Px> + <c,x> + tau*(<dx,x> + <ds,s>) + rho/2 |x-x^*|^2
         subject to  Ax + s = b-tau*dy
                     s \in K
@@ -804,11 +805,11 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
 
         For ds!=0 we rewrite the problem as an embedded problem.
         We add a constraint x'=s, replace all appearances of s with x' and solve
-        argmin.     <[x, x'], [[P+rho*I,     0]; [x, x']> + <[c+tau*dx-rho*x^*, tau*ds-rho*s^*], [x, x']>
+        argmin.     <[x, x'], [[P+rho*I,     0];  [x, x']> + <[c+tau*dx-rho*x^*, tau*ds-rho*s^*], [x, x']>
                                [      0, rho*I]]
-        subject to  [[A,  I]; [x, x'] + [s'; s] = [b-tau*dy; 0]
+        subject to  [[A,  I];  [x, x'] + [s'; s] = [b-tau*dy; 0]
                      [0, -I]]
-                    (s', s) \in (0 \times K)
+                    (s', s) \in (0 x K)
         Note that we also add a regularizer on s in this case (rho/2 |s-s^*|^2).
         
         Args:
@@ -816,7 +817,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dy: NumPy array representing perturbation in `y`
             ds: NumPy array representing perturbation in `s`
             tau: Perturbation strength parameter
-            rho: Regularization parameter
+            rho: Regularization strength parameter
         Returns:
             x_pert: Perturbed solution of the primal variable x
             y_pert: Perturbed solution of the dual variable y
@@ -825,11 +826,11 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
 
         # The cases ds = 0 and ds != 0 are handled separately, see docstring
         if np.isclose(np.sum(np.abs(ds)), 0):
-            # Perturb problem
+            # Perturb problem (Note: perturb primal and dual linear terms in different directions)
             c_pert = c + tau * dx
             b_pert = b - tau * dy
 
-            # Regularize
+            # Regularize: Effectively adds a rho/2 |x-x^*|^2 term to the objective
             P_reg = regularize_P(P, rho=rho, size=n)
             c_pert_reg = c_pert - rho * x
 
@@ -837,20 +838,20 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             warm_start = (x, y, s) if solve_method != "ECOS" else None
 
             # Solve the perturbed problem
-            # TODO: If solve_method=='SCS' and rho==0, this can be sped up strongly by using solver.update
+            # Note: In special case solve_method=='SCS' and rho==0, this could be sped up strongly by using solver.update
             result_pert = solve_internal(A=A, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
                                          solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
             # Extract the solutions
             x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
         else:
-            # Embed problem
+            # Embed problem (see docstring)
             A_emb, b_emb, c_emb, P_emb, cone_dict_emb = embed_problem(A, b, c, P, cone_dict)
 
-            # Perturb problem
+            # Perturb problem (Note: perturb primal and dual linear terms in different directions)
             b_emb_pert = b_emb - tau * np.hstack([dy, np.zeros(m)])
             c_emb_pert = c_emb + tau * np.hstack([dx, ds])
             
-            # Regularize
+            # Regularize: Effectively adds a rho/2 (|x-x^*|^2 + |s-s^*|^2) term to the objective
             P_emb_reg = regularize_P(P_emb, rho=rho, size=n+m)
             c_emb_pert_reg = c_emb_pert - rho * np.hstack([x, s])
 
