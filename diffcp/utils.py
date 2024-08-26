@@ -139,9 +139,9 @@ def compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho, A, b, c, P, cone_di
     For ds!=0 we rewrite the problem as an embedded problem.
     We add a constraint x'=s, replace all appearances of s with x' and solve
     argmin.     <[x, x'], [[P+rho*I,     0];  [x, x']> + <[c+tau*dx-rho*x^*, tau*ds-rho*s^*], [x, x']>
-                            [      0, rho*I]]
+                           [      0, rho*I]]
     subject to  [[A,  I];  [x, x'] + [s'; s] = [b-tau*dy; 0]
-                    [0, -I]]
+                 [0, -I]]
                 (s', s) \in (0 x K)
     Note that we also add a regularizer on s in this case (rho/2 |s-s^*|^2).
     
