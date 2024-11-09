@@ -1,11 +1,35 @@
+
 [project]
-requires-python = ">= 3.8" 
+name = "diffcp"
+version = "1.1"
+description = "A library to compute gradients for convex optimization problems"
+requires-python = ">= 3.10"
+
+requires = [
+    "threadpoolctl >= 1.1"
+]
+urls = {Homepage = "https://github.com/cvxgrp/diffcp/"}
+license = {text = "Apache License, Version 2.0"}
 
 [build-system]
 requires = [
     "numpy>=2.0",
     "scipy>=1.1.0",
     "pybind11>=2.4",
-    "setuptools",
-    "wheel"
+    "setuptools >= 68.1.0",
+    "pytest",
+    "wheel",
+    "scikit-build-core",
+    "pybind11",
 ]
+build-backend = "scikit_build_core.build"
+
+[project.optional-dependencies]
+test = [
+    "clarabel >= 0.5.1",
+    "ecos >= 2.0.10",
+    "scs >= 2.0.2",
+]
+
+[tool.scikit-build]
+wheel.expand-macos-universal-tags = true
