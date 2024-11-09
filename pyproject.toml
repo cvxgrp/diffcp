@@ -5,6 +5,8 @@ version = "1.1.0"
 description = "A library to compute gradients for convex optimization problems"
 requires-python = ">= 3.10"
 
+readme = "README.md"
+
 requires = [
     "threadpoolctl >= 1.1"
 ]
