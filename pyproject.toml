@@ -21,6 +21,7 @@ requires = [
     "wheel",
     "scikit-build-core",
     "pybind11",
+    "openblas",
 ]
 build-backend = "scikit_build_core.build"
 
