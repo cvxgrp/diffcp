@@ -7,8 +7,8 @@ requires-python = ">= 3.10"
 
 readme = "README.md"
 
-requires = [
-    "threadpoolctl >= 1.1"
+dependencies = [
+    "threadpoolctl >= 1.1",
 ]
 urls = {Homepage = "https://github.com/cvxgrp/diffcp/"}
 license = {text = "Apache License, Version 2.0"}
@@ -30,7 +30,7 @@ build-backend = "scikit_build_core.build"
 test = [
     "clarabel >= 0.5.1",
     "ecos >= 2.0.10",
-    "scs >= 2.0.2",
+    "scs >= 3.0.0",
 ]
 
 [tool.scikit-build]
