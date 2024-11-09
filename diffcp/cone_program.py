@@ -4,7 +4,6 @@ from multiprocessing.pool import ThreadPool
 
 import numpy as np
 import scipy.sparse as sparse
-from distutils.version import StrictVersion
 from threadpoolctl import threadpool_limits
 
 import _diffcp
