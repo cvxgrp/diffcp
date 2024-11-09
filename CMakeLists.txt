@@ -16,13 +16,13 @@ find_package(pybind11 CONFIG REQUIRED)
 
 # Add a library using FindPython's tooling (pybind11 also provides a helper like
 # this)
-python_add_library(_core MODULE cpp/src/wrapper.cpp WITH_SOABI)
-target_link_libraries(_core PRIVATE pybind11::headers)
-target_include_directories(_core PRIVATE cpp/external/eigen/)
-target_include_directories(_core PRIVATE cpp/include/)
+python_add_library(_diffcp MODULE cpp/src/wrapper.cpp WITH_SOABI)
+target_link_libraries(_diffcp PRIVATE pybind11::headers)
+target_include_directories(_diffcp PRIVATE cpp/external/eigen/)
+target_include_directories(_diffcp PRIVATE cpp/include/)
 
 # This is passing in the version as a define just as an example
-target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
+target_compile_definitions(_diffcp PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 # The install directory is the output (wheel) directory
-install(TARGETS _core DESTINATION scikit_build_example)
+install(TARGETS _diffcp DESTINATION diffcp)

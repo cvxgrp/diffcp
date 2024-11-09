@@ -6,7 +6,7 @@ import numpy as np
 import scipy.sparse as sparse
 from threadpoolctl import threadpool_limits
 
-import _diffcp
+import diffcp._diffcp as _diffcp
 import diffcp.cones as cone_lib
 
 

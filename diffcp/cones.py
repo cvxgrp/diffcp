@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.sparse as sparse
-from _diffcp import project_exp_cone, Cone, ConeType
+from diffcp._diffcp import project_exp_cone, Cone, ConeType
 
 ZERO = "z"
 POS = "l"
