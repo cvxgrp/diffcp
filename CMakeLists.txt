@@ -9,17 +9,26 @@ project(
   VERSION ${SKBUILD_PROJECT_VERSION}
   LANGUAGES CXX)
 
+#file(GLOB_RECURSE DIFFCP_BACKEND_LIBRARY_SOURCES "cpp/src/deriv.cpp" "cpp/src/cones.cpp" "cpp/src/lsqr.cpp" "cpp/src/linop.cpp")
+#add_library(diffcp_backend STATIC ${DIFFCP_BACKEND_LIBRARY_SOURCES})
+#target_include_directories(diffcp_backend PRIVATE cpp/include/)
+#target_include_directories(diffcp_backend PRIVATE cpp/external/eigen/)
+
 # Find the module development requirements (requires FindPython from 3.17 or
 # scikit-build-core's built-in backport)
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
+#find_package(diffcp_backend CONFIG REQUIRED)
 
 # Add a library using FindPython's tooling (pybind11 also provides a helper like
 # this)
-python_add_library(_diffcp MODULE cpp/src/wrapper.cpp WITH_SOABI)
+python_add_library(_diffcp MODULE cpp/src/wrapper.cpp cpp/src/deriv.cpp cpp/src/cones.cpp cpp/src/lsqr.cpp cpp/src/linop.cpp WITH_SOABI)
 target_link_libraries(_diffcp PRIVATE pybind11::headers)
+#target_link_libraries(_diffcp PRIVATE diffcp_backend)
 target_include_directories(_diffcp PRIVATE cpp/external/eigen/)
 target_include_directories(_diffcp PRIVATE cpp/include/)
+
+
 
 # This is passing in the version as a define just as an example
 target_compile_definitions(_diffcp PRIVATE VERSION_INFO=${PROJECT_VERSION})
