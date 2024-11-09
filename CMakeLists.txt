@@ -18,6 +18,8 @@ find_package(pybind11 CONFIG REQUIRED)
 # this)
 python_add_library(_core MODULE cpp/src/wrapper.cpp WITH_SOABI)
 target_link_libraries(_core PRIVATE pybind11::headers)
+target_include_directories(_core PRIVATE cpp/external/eigen/)
+target_include_directories(_core PRIVATE cpp/include/)
 
 # This is passing in the version as a define just as an example
 target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
