@@ -3,6 +3,7 @@ import scipy.sparse as sparse
 from diffcp._diffcp import project_exp_cone, Cone, ConeType
 
 ZERO = "z"
+EQ_DIM = ZERO
 POS = "l"
 SOC = "q"
 PSD = "s"
