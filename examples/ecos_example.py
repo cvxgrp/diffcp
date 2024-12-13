@@ -6,7 +6,7 @@ np.set_printoptions(precision=5, suppress=True)
 
 
 # We generate a random cone program with a cone
-# defined as a product of a 3-d fixed cone, 3-d positive orthant cone,
+# defined as a product of a 3-d zero cone, 3-d positive orthant cone,
 # and a 5-d second order cone.
 K = {
     'z': 3,

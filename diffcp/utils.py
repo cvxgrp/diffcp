@@ -111,7 +111,7 @@ def compute_perturbed_solution(dA, db, dc, tau, rho, A, b, c, P, cone_dict, x, y
     c_pert_reg = c_pert - rho * x
 
     # Set warm start
-    warm_start = (x, y, s)
+    warm_start = (x, y, s) if solve_method not in ["ECOS", "Clarabel"] else None
 
     # Solve the perturbed problem
     result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
@@ -169,7 +169,7 @@ def compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho, A, b, c, P, cone_di
         c_pert_reg = c_pert - rho * x
 
         # Set warm start
-        warm_start = (x, y, s) if solve_method != "ECOS" else None
+        warm_start = (x, y, s) if solve_method not in ["ECOS", "Clarabel"] else None
 
         # Solve the perturbed problem
         # Note: In special case solve_method=='SCS' and rho==0, this could be sped up strongly by using solver.update
@@ -190,7 +190,7 @@ def compute_adjoint_perturbed_solution(dx, dy, ds, tau, rho, A, b, c, P, cone_di
         c_emb_pert_reg = c_emb_pert - rho * np.hstack([x, s])
 
         # Set warm start
-        if solve_method == "ECOS":
+        if solve_method in ["ECOS", "Clarabel"]:
             warm_start = None
         else:
             warm_start = (np.hstack([x, s]), np.hstack([y, y]), np.hstack([s, s]))

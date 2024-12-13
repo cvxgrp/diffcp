@@ -377,8 +377,6 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
             raise ValueError("PSD cone not supported by ECOS.")
         if ('ed' in cone_dict) and (cone_dict['ed'] != 0):
             raise NotImplementedError("Dual exponential cones not supported yet.")
-        if warm_start is not None:
-            raise ValueError("ECOS does not support warm starting.")
         len_eq = cone_dict[cone_lib.EQ_DIM]
         C_ecos = c
         G_ecos = A[len_eq:]
@@ -452,7 +450,9 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
                           'iter': solution['info']['iter'],
                           'pobj': solution['info']['pcost']}
     elif solve_method == "Clarabel":
-        # for now set P to 0
+        if warm_start is not None:
+            raise ValueError("Clarabel currently does not support warmstarting.")
+        
         if P is None:
             P = sparse.csc_matrix((c.size, c.size))
 
@@ -519,6 +519,9 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
     if mode not in ["dense", "lsqr", "lsmr", "lpgd", "lpgd_right", "lpgd_left"]:
         raise ValueError("Unsupported mode {}; the supported modes are "
                          "'dense', 'lsqr', 'lsmr', 'lpgd', 'lpgd_right' and 'lpgd_left'".format(mode))
+    if mode in ["dense", "lsqr", "lsmr"] and P is not None:
+        raise ValueError("Dense, lsqr, and lsmr modes currently do not support quadratic objectives. "\
+                         "Consider switching to 'lpgd' mode.")
     if np.isnan(A.data).any():
         raise RuntimeError("Found a NaN in A.")
 
@@ -663,7 +666,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         if tau is None or tau <= 0:
             raise ValueError(f"LPGD mode requires tau > 0, got tau={tau}.")
         if rho < 0:
-            raise ValueError(f"Finite difference mode requires rho >= 0, got rho={rho}.")
+            raise ValueError(f"LPGD mode requires rho >= 0, got rho={rho}.")
         
         if mode in ["lpgd", "lpgd_right"]:  # Perturb the problem to the right
             try:
@@ -717,9 +720,9 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         """
 
         if tau is None or tau <= 0:
-            raise ValueError(f"Finite difference mode requires tau > 0, got tau={tau}.")
+            raise ValueError(f"LPGD mode requires tau > 0, got tau={tau}.")
         if rho < 0:
-            raise ValueError(f"Finite difference mode requires rho >= 0, got rho={rho}.")
+            raise ValueError(f"LPGD mode requires rho >= 0, got rho={rho}.")
 
         if mode in ["lpgd", "lpgd_right"]:  # Perturb the problem to the right
             try:

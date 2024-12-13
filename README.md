@@ -96,7 +96,7 @@ These inputs must conform to the [SCS convention](https://github.com/bodono/scs-
 
 The values in `cone_dict` denote the sizes of each cone; the values of `diffcp.SOC`, `diffcp.PSD`, and `diffcp.EXP` should be lists. The order of the rows of `A` must match the ordering of the cones given above. For more details, consult the [SCS documentation](https://github.com/cvxgrp/scs/blob/master/README.md).
 
-To enable [Lagrangian Proximal Gradient Descent (LPGD)](https://arxiv.org/abs/2407.05920) differentiation of the conic program based on efficient finite-differences, provide the `mode=LPGD` option along with the argument `derivative_kwargs=dict(tau=0.1, rho=0.1)` to specify the perturbation and regularization strength. Alternatively, the derivative kwargs can also be passed directly to the returned `derivative` and `adjoint_derivative` function.
+To enable [Lagrangian Proximal Gradient Descent (LPGD)](https://arxiv.org/abs/2407.05920) differentiation of the conic program based on efficient finite-differences, provide the `mode=lpgd` option along with the argument `derivative_kwargs=dict(tau=0.1, rho=0.1)` to specify the perturbation and regularization strength. Alternatively, the derivative kwargs can also be passed directly to the returned `derivative` and `adjoint_derivative` function.
 
 #### Return value
 The function `solve_and_derivative` returns a tuple
