@@ -25,14 +25,14 @@ def pi(z, cones):
         [u, cone_lib.pi(v, cones, dual=True), np.maximum(w, 0)])
 
 
-def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, mode, kwargs):
+def solve_and_derivative_wrapper(A, b, c, P, cone_dict, warm_start, mode, kwargs):
     """A wrapper around solve_and_derivative for the batch function."""
     return solve_and_derivative(
-        A, b, c, cone_dict, warm_start=warm_start, mode=mode, **kwargs)
+        A, b, c, cone_dict, warm_start=warm_start, mode=mode, P=P, **kwargs)
 
 
 def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs_backward=-1,
-                               mode="lsqr", warm_starts=None, **kwargs):
+                               mode="lsqr", warm_starts=None, Ps=None, **kwargs):
     """
     Solves a batch of cone programs and returns a function that
     performs a batch of derivatives. Uses a ThreadPool to perform
@@ -52,6 +52,7 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
             means serial and n_jobs_backward = -1 defaults to the number of CPUs (default=-1).
         mode - Differentiation mode in ["lsqr", "lsmr", "dense", "lpgd", "lpgd_right", "lpgd_left"].
         warm_starts - A list of warm starts.
+        Ps - (optional) A list of P matrices.
         kwargs - kwargs sent to scs.
 
     Returns:
@@ -59,10 +60,11 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
         ys: A list of y arrays.
         ss: A list of s arrays.
         D_batch: A callable with signature
-                D_batch(dAs, dbs, dcs) -> dxs, dys, dss
+                D_batch(dAs, dbs, dcs, dPs) -> dxs, dys, dss
             This callable maps lists of problem data derivatives to lists of solution derivatives.
         DT_batch: A callable with signature
-                DT_batch(dxs, dys, dss) -> dAs, dbs, dcs
+                DT_batch(dxs, dys, dss, return_dP=False) -> dAs, dbs, dcs
+                DT_batch(dxs, dys, dss, return_dP=True) -> dAs, dbs, dcs, dPs
             This callable maps lists of solution derivatives to lists of problem data derivatives.
     """
     batch_size = len(As)
@@ -74,13 +76,16 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
         n_jobs_backward = mp.cpu_count()
     n_jobs_forward = min(batch_size, n_jobs_forward)
     n_jobs_backward = min(batch_size, n_jobs_backward)
+    
+    if Ps is None:
+        Ps = [None] * batch_size
 
     if n_jobs_forward == 1:
         # serial
         xs, ys, ss, Ds, DTs = [], [], [], [], []
         for i in range(batch_size):
             x, y, s, D, DT = solve_and_derivative(As[i], bs[i], cs[i],
-                                                  cone_dicts[i], warm_starts[i], mode=mode, **kwargs)
+                                                  cone_dicts[i], warm_starts[i], mode=mode, P=Ps[i], **kwargs)
             xs += [x]
             ys += [y]
             ss += [s]
@@ -89,8 +94,8 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
     else:
         # thread pool
         pool = ThreadPool(processes=n_jobs_forward)
-        args = [(A, b, c, cone_dict, warm_start, mode, kwargs) for A, b, c, cone_dict, warm_start in
-                zip(As, bs, cs, cone_dicts, warm_starts)]
+        args = [(A, b, c, P, cone_dict, warm_start, mode, kwargs) for A, b, c, P, cone_dict, warm_start in
+                zip(As, bs, cs, Ps, cone_dicts, warm_starts)]
         with threadpool_limits(limits=1):
             results = pool.starmap(solve_and_derivative_wrapper, args)
         pool.close()
@@ -110,21 +115,26 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
                 dss += [ds]
             return dxs, dys, dss
 
-        def DT_batch(dxs, dys, dss, **kwargs):
-            dAs, dbs, dcs = [], [], []
+        def DT_batch(dxs, dys, dss, return_dP=False, **kwargs):
+            dAs, dbs, dcs, dPs = [], [], [], []
             for i in range(batch_size):
-                dA, db, dc = DTs[i](dxs[i], dys[i], dss[i], **kwargs)
-                dAs += [dA]
-                dbs += [db]
-                dcs += [dc]
-            return dAs, dbs, dcs
+                ret = DTs[i](dxs[i], dys[i], dss[i], return_dP=return_dP, **kwargs)
+                dAs += [ret[0]]
+                dbs += [ret[1]]
+                dcs += [ret[2]]
+                if return_dP:
+                    dPs += [ret[3]]
+            if return_dP:
+                return dAs, dbs, dcs, dPs
+            else:
+                return dAs, dbs, dcs
     else:
 
-        def D_batch(dAs, dbs, dcs, **kwargs):
+        def D_batch(dAs, dbs, dcs, dPs=None, **kwargs):
             pool = ThreadPool(processes=n_jobs_backward)
 
             def Di(i):
-                return Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
+                return Ds[i](dAs[i], dbs[i], dcs[i], dPs[i], **kwargs)
             results = pool.map(Di, range(batch_size))
             pool.close()
             dxs = [r[0] for r in results]
@@ -132,29 +142,33 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
             dss = [r[2] for r in results]
             return dxs, dys, dss
 
-        def DT_batch(dxs, dys, dss, **kwargs):
+        def DT_batch(dxs, dys, dss, return_dP=False, **kwargs):
             pool = ThreadPool(processes=n_jobs_backward)
 
             def DTi(i):
-                return DTs[i](dxs[i], dys[i], dss[i], **kwargs)
+                return DTs[i](dxs[i], dys[i], dss[i], return_dP=return_dP, **kwargs)
             results = pool.map(DTi, range(batch_size))
             pool.close()
             dAs = [r[0] for r in results]
             dbs = [r[1] for r in results]
             dcs = [r[2] for r in results]
-            return dAs, dbs, dcs
+            if return_dP:
+                dPs = [r[3] for r in results]
+                return dAs, dbs, dcs, dPs
+            else:
+                return dAs, dbs, dcs
 
     return xs, ys, ss, D_batch, DT_batch
 
 
-def solve_only_wrapper(A, b, c, cone_dict, warm_start, kwargs):
+def solve_only_wrapper(A, b, c, P, cone_dict, warm_start, kwargs):
     """A wrapper around solve_only for the batch function"""
     return solve_only(
-        A, b, c, cone_dict, warm_start=warm_start, **kwargs)
+        A, b, c, cone_dict, warm_start=warm_start, P=P, **kwargs)
 
 
 def solve_only_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1,
-                     warm_starts=None, **kwargs):
+                     warm_starts=None, Ps=None, **kwargs):
     """
     Solves a batch of cone programs. 
     Uses a ThreadPool to perform operations across
@@ -184,15 +198,15 @@ def solve_only_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1,
         xs, ys, ss = [], [], []
         for i in range(batch_size):
             x, y, s = solve_only(As[i], bs[i], cs[i], cone_dicts[i],
-                                 warm_starts[i], **kwargs)
+                                 warm_starts[i], Ps[i], **kwargs)
             xs += [x]
             ys += [y]
             ss += [s]
     else:
         # thread pool
         pool = ThreadPool(processes=n_jobs_forward)
-        args = [(A, b, c, cone_dict, warm_start, kwargs) for A, b, c, cone_dict, warm_start in
-                zip(As, bs, cs, cone_dicts, warm_starts)]
+        args = [(A, b, c, P, cone_dict, warm_start, kwargs) for A, b, c, P, cone_dict, warm_start in
+                zip(As, bs, cs, Ps, cone_dicts, warm_starts)]
         with threadpool_limits(limits=1):
             results = pool.starmap(solve_only_wrapper, args)
         pool.close()
@@ -208,21 +222,21 @@ class SolverError(Exception):
 
 
 def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
-                         solve_method='SCS', **kwargs):
+                         solve_method='SCS', P=None, **kwargs):
     """Solves a cone program, returns its derivative as an abstract linear map.
 
     This function solves a convex cone program, with primal-dual problems
-        min.        c^T x                  min.        b^Ty
-        subject to  Ax + s = b             subject to  A^Ty + c = 0
+        min.        x^T P x + c^T x        min.        x^T P x + b^T y
+        subject to  Ax + s = b             subject to  Px + A^Ty + c = 0
                     s \in K                            y \in K^*
 
-    The problem data A, b, and c correspond to the arguments `A`, `b`, and `c`,
+    The problem data A, b, c, and P correspond to the arguments `A`, `b`, `c`, and `P`,
     and the convex cone `K` corresponds to `cone_dict`; x and s are the primal
     variables, and y is the dual variable.
 
     This function returns a solution (x, y, s) to the program. It also returns
     two functions that respectively represent application of the derivative
-    (at A, b, and c) and its adjoint.
+    (at A, b, c, and P) and its adjoint.
 
     The problem data must be formatted according to the SCS convention, see
     https://github.com/cvxgrp/scs.
@@ -251,6 +265,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
       mode: (optional) Which mode to compute derivative with, options are
           ["dense", "lsqr", "lsmr", "lpgd", "lpgd_right", "lpgd_left"].
       solve_method: (optional) Name of solver to use; SCS, ECOS, or Clarabel.
+      P: (optional) A sparse SciPy matrix in CSC format.
       kwargs: (optional) Keyword arguments to send to the solver.
 
     Returns:
@@ -258,22 +273,25 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
         y: Optimal value of the dual variable y.
         s: Optimal value of the slack variable s.
         derivative: A callable with signature
-                derivative(dA, db, dc) -> dx, dy, ds
-            that applies the derivative of the cone program at (A, b, and c)
-            to the perturbations `dA`, `db`, `dc`. `dA` must be a SciPy sparse
+                derivative(dA, db, dc, dP) -> dx, dy, ds
+            that applies the derivative of the cone program at (A, b, c, P)
+            to the perturbations `dA`, `db`, `dc`, `dP`. `dA` must be a SciPy sparse
             matrix in CSC format with the same sparsity pattern as `A`;
+            `dP` must be a SciPy sparse matrix in CSC format with the same sparsity pattern as `P`;
             `db` and `dc` are NumPy arrays.
         adjoint_derivative: A callable with signature
-                adjoint_derivative(dx, dy, ds) -> dA, db, dc
+                adjoint_derivative(dx, dy, ds, return_dP=False) -> dA, db, dc
+                adjoint_derivative(dx, dy, ds, return_dP=True) -> dA, db, dc, dP
             that applies the adjoint of the derivative of the cone program at
-            (A, b, and c) to the perturbations `dx`, `dy`, `ds`, which must be
+            (A, b, c, P) to the perturbations `dx`, `dy`, `ds`. `dx`, `dy`, `ds` must be
             NumPy arrays. The output `dA` matches the sparsity pattern of `A`.
+            If `return_dP` is True, the output `dP` matches the sparsity pattern of `P`.
     Raises:
         SolverError: if the cone program is infeasible or unbounded.
     """
     result = solve_and_derivative_internal(
         A, b, c, cone_dict, warm_start=warm_start, mode=mode,
-        solve_method=solve_method, **kwargs)
+        solve_method=solve_method, P=P, **kwargs)
     x = result["x"]
     y = result["y"]
     s = result["s"]
@@ -283,7 +301,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
 
 
 def solve_only(A, b, c, cone_dict, warm_start=None,
-                solve_method='SCS', **kwargs):
+                solve_method='SCS', P=None, **kwargs):
     """
     Solves a cone program and returns its solution.
     
@@ -299,7 +317,7 @@ def solve_only(A, b, c, cone_dict, warm_start=None,
     
     result = solve_internal(
         A, b, c, cone_dict, warm_start=warm_start,
-        solve_method=solve_method, **kwargs)
+        solve_method=solve_method, P=P, **kwargs)
     x = result["x"]
     y = result["y"]
     s = result["s"]
@@ -543,7 +561,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         derivative_kwargs = {}
     solver_kwargs = kwargs
     result = solve_internal(A, b, c, cone_dict, solve_method=solve_method,
-        warm_start=warm_start, raise_on_error=raise_on_error, **kwargs)
+        warm_start=warm_start, raise_on_error=raise_on_error, P=P, **kwargs)
     x = result["x"]
     y = result["y"]
     s = result["s"]
@@ -575,20 +593,24 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
 
         pi_z = pi(z, cones)
 
-    def derivative(dA, db, dc, **kwargs):
-        """Applies derivative at (A, b, c) to perturbations dA, db, dc
+    def derivative(dA, db, dc, dP=None, **kwargs):
+        """Applies derivative at (A, b, c) to perturbations dA, db, dc, dP
         Args:
             dA: SciPy sparse matrix in CSC format; must have same sparsity
                 pattern as the matrix `A` from the cone program
             db: NumPy array representing perturbation in `b`
             dc: NumPy array representing perturbation in `c`
+            dP: (optional) SciPy sparse matrix in CSC format; must have 
+                same sparsity pattern as `P` from the cone program
         Returns:
            NumPy arrays dx, dy, ds, the result of applying the derivative
            to the perturbations.
         """
+        if P is None and dP is not None:
+            raise ValueError("P must be provided if dP is not None.")
 
         if "lpgd" in mode:
-            dx, dy, ds = derivative_lpgd(dA, db, dc, **derivative_kwargs, **kwargs)
+            dx, dy, ds = derivative_lpgd(dA, db, dc, dP=dP, **derivative_kwargs, **kwargs)
             return dx, dy, ds
         else:
             dQ = sparse.bmat([
@@ -613,20 +635,24 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             ds = D_proj_dual_cone.matvec(dv) - dv - s * dw
             return -dx, -dy, -ds
 
-    def adjoint_derivative(dx, dy, ds, **kwargs):
+    def adjoint_derivative(dx, dy, ds, return_dP=False, **kwargs):
         """Applies adjoint of derivative at (A, b, c) to perturbations dx, dy, ds
         Args:
             dx: NumPy array representing perturbation in `x`
             dy: NumPy array representing perturbation in `y`
             ds: NumPy array representing perturbation in `s`
+            return_dP: flag to return dP
         Returns:
             (`dA`, `db`, `dc`), the result of applying the adjoint to the
             perturbations; the sparsity pattern of `dA` matches that of `A`.
         """
 
         if "lpgd" in mode:
-            dA, db, dc = adjoint_derivative_lpgd(dx, dy, ds, **derivative_kwargs, **kwargs)
+            return adjoint_derivative_lpgd(dx, dy, ds, return_dP=return_dP, **derivative_kwargs, **kwargs)
         else:
+            if return_dP:
+                raise ValueError("Modes 'dense', 'lsqr', 'lsmr' currently do not support "\
+                                 "differentiating with respect to P. Consider switching to 'lpgd' mode.")
             dw = -(x @ dx + y @ dy + s @ ds)
             dz = np.concatenate(
                 [dx, D_proj_dual_cone.rmatvec(dy + ds) - ds, np.array([dw])])
@@ -645,11 +671,10 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)
             db = pi_z[n:n + m] * r[-1] - pi_z[-1] * r[n:n + m]
             dc = pi_z[:n] * r[-1] - pi_z[-1] * r[:n]
-
-        return dA, db, dc
+            return dA, db, dc
     
-    def derivative_lpgd(dA, db, dc, tau, rho):
-        """Computes standard finite difference derivative at (A, b, c) to perturbations dA, db, dc
+    def derivative_lpgd(dA, db, dc, tau, rho, dP=None):
+        """Computes standard finite difference derivative at (A, b, c) to perturbations dA, db, dc, dP
         with optional regularization rho.
         Args:
             dA: SciPy sparse matrix in CSC format; must have same sparsity
@@ -658,6 +683,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dc: NumPy array representing perturbation in `c`
             tau: Perturbation strength parameter
             rho: Regularization strength parameter
+            dP: (optional) SciPy sparse matrix in CSC format; must have 
+                same sparsity pattern as `P` from the cone program
         Returns:
            NumPy arrays dx, dy, ds, the result of applying the derivative
            to the perturbations.
@@ -671,7 +698,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         if mode in ["lpgd", "lpgd_right"]:  # Perturb the problem to the right
             try:
                 x_right, y_right, s_right = compute_perturbed_solution(
-                    dA, db, dc, tau, rho, A, b, c, P, cone_dict, x, y, s, solver_kwargs, solve_method, solve_internal)
+                    dA, db, dc, dP, tau, rho, A, b, c, P, cone_dict, x, y, s, solver_kwargs, solve_method, solve_internal)
             except SolverError as e:
                 raise SolverError(f"Computation of right-perturbed problem failed: {e}. "\
                                    "Consider decreasing tau or swiching to 'lpgd_left' mode.")
@@ -679,7 +706,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         if mode in ["lpgd", "lpgd_left"]:  # Perturb the problem to the left
             try:
                 x_left, y_left, s_left = compute_perturbed_solution(
-                    dA, db, dc, -tau, rho, A, b, c, P, cone_dict, x, y, s, solver_kwargs, solve_method, solve_internal)
+                    dA, db, dc, dP, -tau, rho, A, b, c, P, cone_dict, x, y, s, solver_kwargs, solve_method, solve_internal)
             except SolverError as e:
                 raise SolverError(f"Computation of left-perturbed problem failed: {e}. "\
                                    "Consider decreasing tau or swiching to 'lpgd_right' mode.")
@@ -700,7 +727,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             raise ValueError(f"Only modes 'lpgd', 'lpgd_left', 'lpgd_right' can be used, got {mode}.")
         return dx, dy, ds
     
-    def adjoint_derivative_lpgd(dx, dy, ds, tau, rho):
+    def adjoint_derivative_lpgd(dx, dy, ds, tau, rho, return_dP=False):
         """Lagrangian Proximal Gradient Descent (LPGD) [arxiv.org/abs/2407.05920]
         Computes informative replacements for adjoint derivatives given incoming gradients dx, dy, ds, 
         can be regarded as an efficient adjoint finite difference method.
@@ -714,9 +741,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             ds: NumPy array representing perturbation in `s`
             tau: Perturbation strength parameter
             rho: Regularization strength parameter
+            return_dP: flag to return dP
         Returns:
-            (`dA`, `db`, `dc`), the result of applying the LPGD to the
-            perturbations; the sparsity pattern of `dA` matches that of `A`.
+            (`dA`, `db`, `dc`) if return_dP is False,
+            (`dA`, `db`, `dc`, `dP`) if return_dP is True,
+            the result of applying the LPGD to the perturbations; 
+            the sparsity pattern of `dA`, `dP` matches that of `A`, `P`.
         """
 
         if tau is None or tau <= 0:
@@ -744,19 +774,27 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dc = (x_right - x_left) / (2 * tau)
             db = - (y_right - y_left) / (2 * tau)
             dA_data = (y_right[rows] * x_right[cols] - y_left[rows] * x_left[cols]) / (2 * tau)
+            dP_data = (x_right[cols] * x_right[cols] - x_left[cols] * x_left[cols]) / (2 * tau)
         elif mode == "lpgd_right":
             dc = (x_right - x) / tau
             db = - (y_right - y) / tau
             dA_data = (y_right[rows] * x_right[cols] - y[rows] * x[cols]) / tau
+            dP_data = (x_right[cols] * x_right[cols] - x[cols] * x[cols]) / tau
         elif mode == "lpgd_left":
             dc = (x - x_left) / tau
             db = - (y - y_left) / tau
             dA_data = (y[rows] * x[cols] - y_left[rows] * x_left[cols]) / tau
+            dP_data = (x[cols] * x[cols] - x_left[cols] * x_left[cols]) / tau
         else:
             raise ValueError(f"Only modes 'lpgd', 'lpgd_left', 'lpgd_right' can be used, got {mode}.")
         
         dA = sparse.csc_matrix((dA_data, (rows, cols)), shape=A.shape)
-        return dA, db, dc
+        
+        if return_dP:
+            dP = sparse.csc_matrix((dP_data, (cols, cols)), shape=P.shape)
+            return dA, db, dc, dP
+        else:
+            return dA, db, dc
 
 
     result["D"] = derivative

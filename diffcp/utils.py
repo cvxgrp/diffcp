@@ -82,7 +82,7 @@ def embed_problem(A, b, c, P, cone_dict):
     return A_emb, b_emb, c_emb, P_emb, cone_dict_emb
 
 
-def compute_perturbed_solution(dA, db, dc, tau, rho, A, b, c, P, cone_dict, x, y, s, solver_kwargs, solve_method, solve_internal):
+def compute_perturbed_solution(dA, db, dc, dP, tau, rho, A, b, c, P, cone_dict, x, y, s, solver_kwargs, solve_method, solve_internal):
     """
     Computes the perturbed solution x_right, y_right, s_right at (A, b, c) with 
     perturbations dA, db, dc and optional regularization rho.
@@ -92,6 +92,8 @@ def compute_perturbed_solution(dA, db, dc, tau, rho, A, b, c, P, cone_dict, x, y
             pattern as the matrix `A` from the cone program
         db: NumPy array representing perturbation in `b`
         dc: NumPy array representing perturbation in `c`
+        dP: Optional: SciPy sparse matrix in CSC format; must have same sparsity
+            pattern as the matrix PA` from the cone program
         tau: Perturbation strength parameter
         rho: Regularization strength parameter
     Returns:
@@ -105,16 +107,20 @@ def compute_perturbed_solution(dA, db, dc, tau, rho, A, b, c, P, cone_dict, x, y
     A_pert = A + tau * dA
     b_pert = b + tau * db
     c_pert = c + tau * dc
+    if dP is not None:
+        P_pert = P + tau * dP
+    else:
+        P_pert = P
 
     # Regularize: Effectively adds a rho/2 |x-x^*|^2 term to the objective
-    P_reg = regularize_P(P, rho=rho, size=n)
+    P_pert_reg = regularize_P(P_pert, rho=rho, size=n)
     c_pert_reg = c_pert - rho * x
 
     # Set warm start
     warm_start = (x, y, s) if solve_method not in ["ECOS", "Clarabel"] else None
 
     # Solve the perturbed problem
-    result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_reg, cone_dict=cone_dict, 
+    result_pert = solve_internal(A=A_pert, b=b_pert, c=c_pert_reg, P=P_pert_reg, cone_dict=cone_dict, 
                                 solve_method=solve_method, warm_start=warm_start, **solver_kwargs)
     # Extract the solutions
     x_pert, y_pert, s_pert = result_pert["x"], result_pert["y"], result_pert["s"]
