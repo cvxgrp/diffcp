@@ -92,8 +92,8 @@ def compute_perturbed_solution(dA, db, dc, dP, tau, rho, A, b, c, P, cone_dict, 
             pattern as the matrix `A` from the cone program
         db: NumPy array representing perturbation in `b`
         dc: NumPy array representing perturbation in `c`
-        dP: Optional: SciPy sparse matrix in CSC format; must have same sparsity
-            pattern as the matrix PA` from the cone program
+        dP: (optional) SciPy sparse matrix in CSC format; must have same sparsity
+            pattern as the matrix `P` from the cone program
         tau: Perturbation strength parameter
         rho: Regularization strength parameter
     Returns:
