@@ -47,15 +47,15 @@ MARCH_NATIVE=1 OPENMP_FLAG="-fopenmp" pip install diffcp
 `diffcp` differentiates through a primal-dual cone program pair. The primal problem must be expressed as 
 
 ```
-minimize        c'x
+minimize        c'x + x'Px
 subject to      Ax + s = b
                 s in K
 ```
-where  `x` and `s` are variables, `A`, `b` and `c` are the user-supplied problem data, and `K` is a user-defined convex cone. The corresponding dual problem is
+where  `x` and `s` are variables, `A`, `b`, `c` and `P` (optional) are the user-supplied problem data, and `K` is a user-defined convex cone. The corresponding dual problem is
 
 ```
-minimize        b'y
-subject to      A'y + c == 0
+minimize        b'y + x'Px
+subject to      Px + A'y + c == 0
                 y in K^*
 ```
 
@@ -66,13 +66,13 @@ with dual variable `y`.
 `diffcp` exposes the function
 
 ```python
-solve_and_derivative(A, b, c, cone_dict, warm_start=None, solver=None, **kwargs).
+solve_and_derivative(A, b, c, cone_dict, warm_start=None, solver=None, P=None, **kwargs).
 ```
 
 This function returns a primal-dual solution `x`, `y`, and `s`, along with
 functions for evaluating the derivative and its adjoint (transpose).
 These functions respectively compute right and left multiplication of the derivative
-of the solution map at `A`, `b`, and `c` by a vector.
+of the solution map at `A`, `b`, `c` and `P` by a vector.
 The `solver` argument determines which solver to use; the available solvers
 are `solver="SCS"`, `solver="ECOS"`, and `solver="Clarabel"`.
 If no solver is specified, `diffcp` will choose the solver itself.
@@ -80,11 +80,12 @@ In the case that the problem is not solved, i.e. the solver fails for some reaso
 a `SolverError` Exception.
 
 #### Arguments
-The arguments `A`, `b`, and `c` correspond to the problem data of a cone program.
+The arguments `A`, `b`, `c` and `P` correspond to the problem data of a cone program.
 * `A` must be a [SciPy sparse CSC matrix](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html).
 * `b` and `c` must be NumPy arrays.
 * `cone_dict` is a dictionary that defines the convex cone `K`.
 * `warm_start` is an optional tuple `(x, y, s)` at which to warm-start. (Note: this is only available for the SCS solver).
+* `P` is an optional [SciPy sparse CSC matrix](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html). (Note: this is currently only available for the Clarabel and SCS solvers, paired with LPGD differentiation mode).
 * `**kwargs` are keyword arguments to forward to the solver (e.g., `verbose=False`).
 
 These inputs must conform to the [SCS convention](https://github.com/bodono/scs-python) for problem data. The keys in `cone_dict` correspond to the cones, with
@@ -96,7 +97,7 @@ These inputs must conform to the [SCS convention](https://github.com/bodono/scs-
 
 The values in `cone_dict` denote the sizes of each cone; the values of `diffcp.SOC`, `diffcp.PSD`, and `diffcp.EXP` should be lists. The order of the rows of `A` must match the ordering of the cones given above. For more details, consult the [SCS documentation](https://github.com/cvxgrp/scs/blob/master/README.md).
 
-To enable [Lagrangian Proximal Gradient Descent (LPGD)](https://arxiv.org/abs/2407.05920) differentiation of the conic program based on efficient finite-differences, provide the `mode=lpgd` option along with the argument `derivative_kwargs=dict(tau=0.1, rho=0.1)` to specify the perturbation and regularization strength. Alternatively, the derivative kwargs can also be passed directly to the returned `derivative` and `adjoint_derivative` function.
+To enable [Lagrangian Proximal Gradient Descent (LPGD)](https://arxiv.org/abs/2407.05920) differentiation of the conic program based on efficient finite-differences, provide one of the `mode=[lpgd, lpgd_left, lpgd_right]` options along with the argument `derivative_kwargs=dict(tau=0.1, rho=0.1)` to specify the perturbation and regularization strength. Alternatively, the derivative kwargs can also be passed directly to the returned `derivative` and `adjoint_derivative` function.
 
 #### Return value
 The function `solve_and_derivative` returns a tuple
@@ -107,11 +108,11 @@ The function `solve_and_derivative` returns a tuple
 
 * `x`, `y`, and `s` are a primal-dual solution.
 
-* `derivative` is a function that applies the derivative at `(A, b, c)` to perturbations `dA`, `db`, `dc`. It has the signature 
-```derivative(dA, db, dc) -> dx, dy, ds```, where `dA` is a SciPy sparse CSC matrix with the same sparsity pattern as `A`, and `db` and `dc` are NumPy arrays. `dx`, `dy`, and `ds` are NumPy arrays, approximating the change in the primal-dual solution due to the perturbation.
+* `derivative` is a function that applies the derivative at `(A, b, c, P)` to perturbations `dA`, `db`, `dc` and `dP` (optional). It has the signature 
+```derivative(dA, db, dc, dP=None) -> dx, dy, ds```, where `dA` is a SciPy sparse CSC matrix with the same sparsity pattern as `A`, `db` and `dc` are NumPy arrays, and `dP` is an optional SciPy sparse CSC matrix with the same sparsity pattern as `P` (Note: currently only supported for LPGD differentiation mode). `dx`, `dy`, and `ds` are NumPy arrays, approximating the change in the primal-dual solution due to the perturbation.
 
 * `adjoint_derivative` is a function that applies the adjoint of the derivative to perturbations `dx`, `dy`, `ds`. It has the signature 
-```adjoint_derivative(dx, dy, ds) -> dA, db, dc```, where `dx`, `dy`, and `ds` are NumPy arrays.
+```adjoint_derivative(dx, dy, ds, return_dP=False) -> dA, db, dc, (dP)```, where `dx`, `dy`, and `ds` are NumPy arrays. `dP` is only returned when setting `return_dP=True` (Note: currently only supported for LPGD differentiation mode).
 
 #### Example
 ```python
@@ -147,7 +148,7 @@ ds = np.zeros(m)
 dA, db, dc = DT(dx, dy, ds)
 ```
 
-For more examples, including the SDP example described in the paper, see the [`examples`](examples/) directory.
+For more examples, including the SDP example described in the paper, and examples of using LPGD differentiation, see the [`examples`](examples/) directory.
 
 ### Citing
 If you wish to cite `diffcp`, please use the following BibTex:
