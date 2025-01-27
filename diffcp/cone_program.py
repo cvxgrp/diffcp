@@ -286,6 +286,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
             (A, b, c, P) to the perturbations `dx`, `dy`, `ds`. `dx`, `dy`, `ds` must be
             NumPy arrays. The output `dA` matches the sparsity pattern of `A`.
             If `return_dP` is True, the output `dP` matches the sparsity pattern of `P`.
+            `return_dP=True` is only supported for lpgd mode.
     Raises:
         SolverError: if the cone program is infeasible or unbounded.
     """
@@ -641,7 +642,7 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dx: NumPy array representing perturbation in `x`
             dy: NumPy array representing perturbation in `y`
             ds: NumPy array representing perturbation in `s`
-            return_dP: flag to return dP
+            return_dP: flag to return dP, True is only supported for lpgd mode.
         Returns:
             (`dA`, `db`, `dc`), the result of applying the adjoint to the
             perturbations; the sparsity pattern of `dA` matches that of `A`.
