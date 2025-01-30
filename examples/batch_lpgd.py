@@ -1,6 +1,4 @@
 import diffcp
-import utils
-import IPython as ipy
 import time
 import numpy as np
 
