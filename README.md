@@ -16,7 +16,7 @@ pip install diffcp
 You will need a C++11-capable compiler to build `diffcp`.
 
 `diffcp` requires:
-* [NumPy](https://github.com/numpy/numpy) >= 1.15
+* [NumPy](https://github.com/numpy/numpy) >= 2.0
 * [SciPy](https://github.com/scipy/scipy) >= 1.10
 * [SCS](https://github.com/bodono/scs-python) >= 2.0.2
 * [pybind11](https://github.com/pybind/pybind11/tree/stable) >= 2.4

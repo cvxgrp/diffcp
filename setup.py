@@ -90,14 +90,14 @@ ext_modules = [_diffcp]
 
 setup(
     name='diffcp',
-    version="1.0.23",
+    version="1.0.25",
     author="Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, Walaa Moursi",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
     setup_requires=['pybind11 >= 2.4'],
     install_requires=[
-        "numpy >= 1.15",
+        "numpy >= 2.0",
         "scs >= 2.0.2",  # 2.0.2 is the oldest version on conda forge
         "scipy >= 1.1.0",
         "pybind11 >= 2.4",

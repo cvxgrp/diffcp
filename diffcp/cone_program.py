@@ -2,15 +2,11 @@ import multiprocessing as mp
 import warnings
 from multiprocessing.pool import ThreadPool
 
-import ecos
-import clarabel
 import numpy as np
 import scipy.sparse as sparse
-import scs
-from distutils.version import StrictVersion
 from threadpoolctl import threadpool_limits
 
-import _diffcp
+import diffcp._diffcp as _diffcp
 import diffcp.cones as cone_lib
 from diffcp.utils import compute_perturbed_solution, compute_adjoint_perturbed_solution
 
@@ -339,26 +335,18 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
             solve_method = "ECOS"
 
     if solve_method == "SCS":
+        import scs
 
-        # SCS versions SCS 2.*
-        if StrictVersion(scs.__version__) < StrictVersion('3.0.0'):
-            if "eps_abs" in kwargs or "eps_rel" in kwargs:
-                # Take the min of eps_rel and eps_abs to be eps
-                kwargs["eps"] = min(kwargs.get("eps_abs", 1),
-                                    kwargs.get("eps_rel", 1))
-
-        # SCS version 3.*
-        else:
-            if "eps" in kwargs:  # eps replaced by eps_abs, eps_rel
-                kwargs["eps_abs"] = kwargs["eps"]
-                kwargs["eps_rel"] = kwargs["eps"]
-                del kwargs["eps"]
+        if "eps" in kwargs:  # eps replaced by eps_abs, eps_rel
+            kwargs["eps_abs"] = kwargs["eps"]
+            kwargs["eps_rel"] = kwargs["eps"]
+            del kwargs["eps"]
 
         data = {
             "P": P,
             "A": A,
             "b": b,
-            "c": c
+            "c": c,
         }
 
         if warm_start is not None:
@@ -388,8 +376,10 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
                 return result
 
     elif solve_method == "ECOS":
+        import ecos
         if P is not None:
             raise ValueError("ECOS does not support quadratic objectives.")
+
         if warm_start is not None:
             raise ValueError('ECOS does not support warmstart.')
         if ('s' in cone_dict) and (cone_dict['s'] != []):
@@ -469,10 +459,12 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
                           'iter': solution['info']['iter'],
                           'pobj': solution['info']['pcost']}
     elif solve_method == "Clarabel":
+        import clarabel
         if warm_start is not None:
             raise ValueError("Clarabel currently does not support warmstarting.")
         
         if P is None:
+            # for now set P to 0
             P = sparse.csc_matrix((c.size, c.size))
 
         cones = []
