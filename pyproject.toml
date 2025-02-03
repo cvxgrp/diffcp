@@ -1,7 +1,7 @@
 
 [project]
 name = "diffcp"
-version = "1.1.3"
+version = "1.1.4"
 description = "A library to compute gradients for convex optimization problems"
 requires-python = ">= 3.10"
 

@@ -437,7 +437,7 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
                           'setupTime': solution['info']['timing']['tsetup'],
                           'iter': solution['info']['iter'],
                           'pobj': solution['info']['pcost']}
-    elif solve_method == "Clarabel":
+    elif solve_method == "Clarabel" or solve_method == "CLARABEL":
         import clarabel
         # for now set P to 0
         P = sparse.csc_matrix((c.size, c.size))
