@@ -16,25 +16,29 @@ for _ in range(batch_size):
     cs += [c]
     Ks += [K]
 
+
 def time_function(f, N=1):
     result = []
     for i in range(N):
         tic = time.time()
         f()
         toc = time.time()
-        result += [toc-tic]
+        result += [toc - tic]
     return np.mean(result), np.std(result)
 
-for n_jobs in range(1, 5):
+for n_jobs in range(1, 8):
     def f_forward():
         return diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
-                n_jobs_forward=n_jobs, n_jobs_backward=n_jobs)
+                                                 n_jobs_forward=n_jobs, n_jobs_backward=n_jobs, solve_method="ECOS", verbose=False, 
+                                                 mode="lpgd", derivative_kwargs=dict(tau=1e-3, rho=0.0))
     xs, ys, ss, D_batch, DT_batch = diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
-                n_jobs_forward=1, n_jobs_backward=n_jobs)
+                                                                      n_jobs_forward=1, n_jobs_backward=n_jobs, solve_method="ECOS", verbose=False,
+                                                                      mode="lpgd", derivative_kwargs=dict(tau=1e-3, rho=0.0))
+
     def f_backward():
-        DT_batch(xs, ys, ss, mode="lsqr")
+        DT_batch(xs, ys, ss)
 
     mean_forward, std_forward = time_function(f_forward)
     mean_backward, std_backward = time_function(f_backward)
-    print ("%03d | %4.4f +/- %2.2f | %4.4f +/- %2.2f" %
-            (n_jobs, mean_forward, std_forward, mean_backward, std_backward))
+    print("%03d | %4.4f +/- %2.2f | %4.4f +/- %2.2f" %
+          (n_jobs, mean_forward, std_forward, mean_backward, std_backward))

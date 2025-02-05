@@ -30,9 +30,9 @@ for n_jobs in range(1, 5):
         return diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
                 n_jobs_forward=n_jobs, n_jobs_backward=n_jobs)
     xs, ys, ss, D_batch, DT_batch = diffcp.solve_and_derivative_batch(As, bs, cs, Ks,
-                n_jobs_forward=1, n_jobs_backward=n_jobs)
+                n_jobs_forward=1, n_jobs_backward=n_jobs, mode='lpgd_left')
     def f_backward():
-        DT_batch(xs, ys, ss, mode="lsqr")
+        DT_batch(xs, ys, ss, tau=0.1, rho=0.1)
 
     mean_forward, std_forward = time_function(f_forward)
     mean_backward, std_backward = time_function(f_backward)

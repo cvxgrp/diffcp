@@ -2,6 +2,8 @@ import diffcp
 
 import numpy as np
 import utils
+from scipy import sparse
+
 np.set_printoptions(precision=5, suppress=True)
 
 
@@ -20,21 +22,19 @@ n = 5
 np.random.seed(0)
 
 A, b, c = utils.random_cone_prog(m, n, K)
+P = sparse.csc_matrix((c.size, c.size))
+P = sparse.triu(P).tocsc()
 
 # We solve the cone program and get the derivative and its adjoint
 x, y, s, derivative, adjoint_derivative = diffcp.solve_and_derivative(
-    A, b, c, K, eps=1e-10)
+    A, b, c, K, P=P, solve_method="Clarabel", verbose=False, mode="lpgd", derivative_kwargs=dict(tau=0.1, rho=0.0))
 
 print("x =", x)
 print("y =", y)
 print("s =", s)
 
-# We evaluate the gradient of the objective with respect to A, b and c.
-dA, db, dc = adjoint_derivative(c, np.zeros(
-    m), np.zeros(m), atol=1e-10, btol=1e-10)
+# Adjoint derivative
+dA, db, dc, dP = adjoint_derivative(dx=c, dy=np.zeros(m), ds=np.zeros(m), return_dP=True)
 
-# The gradient of the objective with respect to b should be
-# equal to minus the dual variable y (see, e.g., page 268 of Convex Optimization by
-# Boyd & Vandenberghe).
-print("db =", db)
-print("-y =", -y)
+# Derivative (dummy inputs)
+dx, dy, ds = derivative(dA=A, db=b, dc=c, dP=P)

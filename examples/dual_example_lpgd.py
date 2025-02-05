@@ -23,15 +23,14 @@ A, b, c = utils.random_cone_prog(m, n, K)
 
 # We solve the cone program and get the derivative and its adjoint
 x, y, s, derivative, adjoint_derivative = diffcp.solve_and_derivative(
-    A, b, c, K, eps=1e-10)
+    A, b, c, K, eps=1e-10, mode="lpgd", derivative_kwargs=dict(tau=1e-3, rho=0.1))
 
 print("x =", x)
 print("y =", y)
 print("s =", s)
 
 # We evaluate the gradient of the objective with respect to A, b and c.
-dA, db, dc = adjoint_derivative(c, np.zeros(
-    m), np.zeros(m), atol=1e-10, btol=1e-10)
+dA, db, dc = adjoint_derivative(c, np.zeros(m), np.zeros(m))
 
 # The gradient of the objective with respect to b should be
 # equal to minus the dual variable y (see, e.g., page 268 of Convex Optimization by
