@@ -22,13 +22,13 @@ def permute_psd_rows(A: sparse.csc_matrix, n: int, row_offset: int) -> sparse.cs
     Returns:
         csc_matrix: New CSC matrix with permuted rows.
     """
-    triu_rows, triu_cols = np.triu_indices(n)  # Upper triangular indices
+    tril_rows, tril_cols = np.tril_indices(n)
 
     # Compute the permutation mapping
-    triu_multi_index = np.ravel_multi_index((triu_cols, triu_rows), (n, n))
-    triu_perm = np.argsort(triu_multi_index)
+    tril_multi_index = np.ravel_multi_index((tril_cols, tril_rows), (n, n))
+    tril_perm = np.argsort(tril_multi_index)
     # Adjust row indices to match original row location
-    row_map = row_offset + triu_perm
+    row_map = row_offset + tril_perm
 
     # Apply row permutation
     data, rows, cols = A.data, A.indices, A.indptr
