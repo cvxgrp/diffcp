@@ -9,6 +9,35 @@ from threadpoolctl import threadpool_limits
 import diffcp._diffcp as _diffcp
 import diffcp.cones as cone_lib
 
+def permute_psd_rows(A: sparse.csc_matrix, n: int, row_offset: int) -> sparse.csc_matrix:
+    """
+    Permutes rows of a sparse CSC constraint matrix A to switch from lower
+    triangular order (SCS) to upper triangular order (Clarabel) for a PSD constraint.
+
+    Args:
+        A (csc_matrix): Constraint matrix in CSC format.
+        n (int): Size of the PSD constraint matrix (n x n).
+        row_offset (int): Row index where the PSD block starts.
+
+    Returns:
+        csc_matrix: New CSC matrix with permuted rows.
+    """
+    triu_rows, triu_cols = np.triu_indices(n)  # Upper triangular indices
+
+    # Compute the permutation mapping
+    triu_multi_index = np.ravel_multi_index((triu_cols, triu_rows), (n, n))
+    triu_perm = np.argsort(triu_multi_index)
+    # Adjust row indices to match original row location
+    row_map = row_offset + triu_perm
+
+    # Apply row permutation
+    data, rows, cols = A.data, A.indices, A.indptr
+    new_rows = np.copy(rows)  # Create a new row index array
+    # Identify affected rows
+    mask = (rows >= row_offset) & (rows < (row_offset + len(row_map)))
+    new_rows[mask] = row_map[rows[mask] - row_offset]
+
+    return sparse.csc_matrix((data, new_rows, cols), shape=A.shape)
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -443,24 +472,33 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
         P = sparse.csc_matrix((c.size, c.size))
 
         cones = []
+        # Given the difference in convention between SCS (lower triangluar columnwise)
+        # and Clarabel (upper triangular columnwise), the rows of A may need to be permuted
+        start_row = 0
         if "z" in cone_dict:
             v = cone_dict["z"]
             if v > 0:
                 cones.append(clarabel.ZeroConeT(v))
+                start_row += v
         if "f" in cone_dict:
             v = cone_dict["f"]
             if v > 0:
                 cones.append(clarabel.ZeroConeT(v))
+                start_row += v
         if "l" in cone_dict:
             v = cone_dict["l"]
             if v > 0:
                 cones.append(clarabel.NonnegativeConeT(v))
+                start_row += v
         if "q" in cone_dict:
             for v in cone_dict["q"]:
                 cones.append(clarabel.SecondOrderConeT(v))
+                start_row += v
         if "s" in cone_dict:
             for v in cone_dict["s"]:
                 cones.append(clarabel.PSDTriangleConeT(v))
+                A = permute_psd_rows(A, v, start_row)
+                start_row += v
         if "ep" in cone_dict:
             v = cone_dict["ep"]
             cones += [clarabel.ExponentialConeT()] * v
