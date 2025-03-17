@@ -9,7 +9,8 @@ from threadpoolctl import threadpool_limits
 import diffcp._diffcp as _diffcp
 import diffcp.cones as cone_lib
 
-def permute_psd_rows(A: sparse.csc_matrix, n: int, row_offset: int) -> sparse.csc_matrix:
+
+def permute_psd_rows(A: sparse.csc_matrix, b: np.ndarray, n: int, row_offset: int) -> sparse.csc_matrix:
     """
     Permutes rows of a sparse CSC constraint matrix A to switch from lower
     triangular order (SCS) to upper triangular order (Clarabel) for a PSD constraint.
@@ -22,6 +23,7 @@ def permute_psd_rows(A: sparse.csc_matrix, n: int, row_offset: int) -> sparse.cs
     Returns:
         csc_matrix: New CSC matrix with permuted rows.
     """
+
     tril_rows, tril_cols = np.tril_indices(n)
 
     # Compute the permutation mapping
@@ -37,7 +39,13 @@ def permute_psd_rows(A: sparse.csc_matrix, n: int, row_offset: int) -> sparse.cs
     mask = (rows >= row_offset) & (rows < (row_offset + len(row_map)))
     new_rows[mask] = row_map[rows[mask] - row_offset]
 
-    return sparse.csc_matrix((data, new_rows, cols), shape=A.shape)
+    new_A = sparse.csc_matrix((data, new_rows, cols), shape=A.shape)
+
+    new_b = np.copy(b)
+
+    new_b[row_offset:row_offset+len(row_map)] = new_b[row_map]
+
+    return new_A, new_b
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -497,7 +505,7 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
         if "s" in cone_dict:
             for v in cone_dict["s"]:
                 cones.append(clarabel.PSDTriangleConeT(v))
-                A = permute_psd_rows(A, v, start_row)
+                A, b = permute_psd_rows(A, b, v, start_row)
                 start_row += v
         if "ep" in cone_dict:
             v = cone_dict["ep"]
