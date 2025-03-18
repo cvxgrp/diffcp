@@ -25,25 +25,27 @@ def permute_psd_rows(A: sparse.csc_matrix, b: np.ndarray, n: int, row_offset: in
     """
 
     tril_rows, tril_cols = np.tril_indices(n)
+    triu_rows, triu_cols = np.triu_indices(n)
 
     # Compute the permutation mapping
     tril_multi_index = np.ravel_multi_index((tril_cols, tril_rows), (n, n))
-    tril_perm = np.argsort(tril_multi_index)
-    # Adjust row indices to match original row location
-    row_map = row_offset + tril_perm
+    triu_multi_index = np.ravel_multi_index((triu_cols, triu_rows), (n, n))
+    postshuffle_from_preshuffle_perm = np.argsort(tril_multi_index) + row_offset
+    preshuffle_from_postshuffle_perm = np.argsort(triu_multi_index) + row_offset
+    n_rows = len(postshuffle_from_preshuffle_perm)
 
     # Apply row permutation
     data, rows, cols = A.data, A.indices, A.indptr
     new_rows = np.copy(rows)  # Create a new row index array
     # Identify affected rows
-    mask = (rows >= row_offset) & (rows < (row_offset + len(row_map)))
-    new_rows[mask] = row_map[rows[mask] - row_offset]
+    mask = (rows >= row_offset) & (rows < (row_offset + n_rows))
+    new_rows[mask] = postshuffle_from_preshuffle_perm[rows[mask] - row_offset]
 
     new_A = sparse.csc_matrix((data, new_rows, cols), shape=A.shape)
 
     new_b = np.copy(b)
 
-    new_b[row_offset:row_offset+len(row_map)] = new_b[row_map]
+    new_b[row_offset:row_offset+n_rows] = new_b[preshuffle_from_postshuffle_perm]
 
     return new_A, new_b
 
