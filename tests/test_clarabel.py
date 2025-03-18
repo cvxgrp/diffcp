@@ -2,6 +2,7 @@ import cvxpy as cp
 import numpy as np
 
 import diffcp.cone_program as cone_prog
+from diffcp.cones import unvec_symm
 import diffcp.utils as utils
 
 
@@ -120,3 +121,20 @@ def test_expcone():
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)
         np.testing.assert_allclose(s_pert - s, ds, atol=1e-8)
+
+def test_psdcone():
+    DIM = 5
+    X = cp.Variable(shape=(DIM, DIM), PSD=True)
+    C = np.zeros((DIM, DIM))
+    C[0, 0] = 1
+    C[4, 4] = -1
+    objective = cp.Minimize(cp.trace(C @ X))
+    constraint = cp.trace(X) == 1
+    problem = cp.Problem(objective, [constraint])
+    A, b, c, cone_dims = utils.scs_data_from_cvxpy_problem(problem)
+    sol_vec, _, _, _, _ = cone_prog.solve_and_derivative(A, b, c, cone_dims, solve_method='Clarabel')
+
+    sol = unvec_symm(sol_vec, DIM)
+
+    assert np.abs(np.trace(sol) - 1.0) < 1e-6
+    assert (np.linalg.eigvals(sol) >= -1e-6).all()
