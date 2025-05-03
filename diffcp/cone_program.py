@@ -9,6 +9,8 @@ from threadpoolctl import threadpool_limits
 import diffcp._diffcp as _diffcp
 import diffcp.cones as cone_lib
 
+from diffcp.scs2mosek import mosek_ as mosek
+
 
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
@@ -495,6 +497,20 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
             "iter": solution.iterations,
             "pobj": solution.obj_val,
         }
+    elif solve_method == "MOSEK" or solve_method == "mosek":
+        if warm_start is not None:
+            raise ValueError("MOSEK does not support warm starting.")
+        
+        solution = mosek(A, b, c, cone_dict, **kwargs)
+        status = solution["info"].get("status", "")
+        if status not in ("Solved", "Optimal"):
+            if raise_on_error:
+                raise SolverError(f"Solver MOSEK returned status {status}")
+        result = {}
+        result["x"] = np.array(solution["x"])
+        result["y"] = np.array(solution["y"])
+        result["s"] = np.array(solution["s"])
+        result["info"] = solution["info"]
     else:
         raise ValueError("Solver %s not supported." % solve_method)
     

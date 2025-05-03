@@ -1,7 +1,7 @@
 
 [project]
 name = "diffcp"
-version = "1.1.4"
+version = "1.1.5"
 description = "A library to compute gradients for convex optimization problems"
 requires-python = ">= 3.10"
 
@@ -31,6 +31,7 @@ test = [
     "clarabel >= 0.5.1",
     "ecos >= 2.0.10",
     "scs >= 3.0.0",
+    "mosek>=11.0.19"
 ]
 
 [tool.scikit-build]
