@@ -209,7 +209,7 @@ def solve_and_derivative(A, b, c, cone_dict, warm_start=None, mode='lsqr',
     This function solves a convex cone program, with primal-dual problems
         min.        c^T x                  min.        b^Ty
         subject to  Ax + s = b             subject to  A^Ty + c = 0
-                    s \in K                            y \in K^*
+                    s \\in K                            y \\in K^*
 
     The problem data A, b, and c correspond to the arguments `A`, `b`, and `c`,
     and the convex cone `K` corresponds to `cone_dict`; x and s are the primal
@@ -543,10 +543,10 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
     D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
     if mode == "dense":
         Q_dense = Q.todense()
-        M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
+        M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w.item())
         MT = M.T
     elif mode in ("lsqr", "lsmr"):
-        M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
+        M = _diffcp.M_operator(Q, cones_parsed, u, v, w.item())
         MT = M.transpose()
 
     pi_z = pi(z, cones)
