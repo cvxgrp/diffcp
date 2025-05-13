@@ -29,7 +29,7 @@ def solve_and_derivative_wrapper(A, b, c, cone_dict, warm_start, mode, kwargs):
 
 
 def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs_backward=-1,
-                               mode="lsqr", warm_starts=None, **kwargs):
+                               mode="lsqr", warm_starts=None,solve_method='SCS', **kwargs):
     """
     Solves a batch of cone programs and returns a function that
     performs a batch of derivatives. Uses a ThreadPool to perform
@@ -144,14 +144,14 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
     return xs, ys, ss, D_batch, DT_batch
 
 
-def solve_only_wrapper(A, b, c, cone_dict, warm_start, kwargs):
+def solve_only_wrapper(A, b, c, cone_dict, warm_start, solve_method,kwargs):
     """A wrapper around solve_only for the batch function"""
     return solve_only(
-        A, b, c, cone_dict, warm_start=warm_start, **kwargs)
+        A, b, c, cone_dict, warm_start=warm_start,solve_method=solve_method, **kwargs)
 
 
 def solve_only_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1,
-                     warm_starts=None, **kwargs):
+                     warm_starts=None, solve_method='SCS',**kwargs):
     """
     Solves a batch of cone programs. 
     Uses a ThreadPool to perform operations across
@@ -181,14 +181,14 @@ def solve_only_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1,
         xs, ys, ss = [], [], []
         for i in range(batch_size):
             x, y, s = solve_only(As[i], bs[i], cs[i], cone_dicts[i],
-                                 warm_starts[i], **kwargs)
+                                 warm_starts[i], solve_method=solve_method, **kwargs)
             xs += [x]
             ys += [y]
             ss += [s]
     else:
         # thread pool
         pool = ThreadPool(processes=n_jobs_forward)
-        args = [(A, b, c, cone_dict, warm_start, kwargs) for A, b, c, cone_dict, warm_start in
+        args = [(A, b, c, cone_dict, warm_start, solve_method, kwargs) for A, b, c, cone_dict, warm_start in
                 zip(As, bs, cs, cone_dicts, warm_starts)]
         with threadpool_limits(limits=1):
             results = pool.starmap(solve_only_wrapper, args)
