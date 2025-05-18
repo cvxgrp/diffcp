@@ -49,16 +49,18 @@ def mosek_(A, b, c, cone_dict,
         slacks = []     # 构造 Ax + slacks = b
         """equalities
         (SCS)s.EQ_DIM  Ax+s=b|s=0   (MOSEK)"""
-        eq_row_e=cone_dict[dp.EQ_DIM]
+        eq_row_e = cone_dict.get(dp.EQ_DIM, 0)
         if cone_dict[dp.EQ_DIM] != 0:
+            eq_row_e += cone_dict[dp.EQ_DIM]
             s_eq = M.variable(f"s_eq", cone_dict[dp.EQ_DIM], mf.Domain.equalsTo(0.0))
             slacks.append(s_eq)
             # print(f"eq_row_e={eq_row_e} Equalities: {A[:eq_row_e,:].toarray()} = {b[:eq_row_e]}")
 
         """inequalities | positive orthant
         (SCS)s.LEQ_DIM  Ax+s=b|s>=0   (MOSEK)"""
-        leq_row_e=eq_row_e+cone_dict[s.LEQ_DIM]
-        if cone_dict[s.LEQ_DIM] != 0:
+        leq_row_e=eq_row_e
+        if cone_dict.get(s.LEQ_DIM, None) and cone_dict[s.LEQ_DIM] != 0:
+            leq_row_e += cone_dict[s.LEQ_DIM]
             s_leq = M.variable(f"s_leq", cone_dict[s.LEQ_DIM], mf.Domain.greaterThan(0.0))
             slacks.append(s_leq)
             # print(f"leq_row_e={leq_row_e}"
@@ -86,8 +88,11 @@ def mosek_(A, b, c, cone_dict,
         # (SCS)s.SOC_DIM [q_0,q_1,...] q_i 是第i个soc锥的变量数  A(v_{t}^T,...,v_{sq_i}^T)+s=b|t>=s_1^2+..s_{q_i-1}^T   
         # (MOSEK) [x_1,x_2,...,x_d]
         # https://docs.mosek.com/latest/pythonfusion/domain.html#domain.inqcone"""
-        soc_row_e=box_row_e+sum(cone_dict[dp.SOC])
-        soc_cones = cone_dict[dp.SOC]
+        soc_row_e=box_row_e
+        soc_cones = []
+        if cone_dict.get(dp.SOC, None) is not None:
+            soc_row_e += sum(cone_dict[dp.SOC])
+            soc_cones = cone_dict[dp.SOC]
         if soc_cones:
             total_soc = sum(cone_dict[dp.SOC])
             s_soc = M.variable(f"s_soc", total_soc, mf.Domain.unbounded())   
@@ -106,9 +111,10 @@ def mosek_(A, b, c, cone_dict,
         (MOSE) S \in PSD
         [vec(S)=s]
         """
-        psd_row_e=soc_row_e+(np.array(cone_dict[dp.PSD]) * (np.array(cone_dict[dp.PSD]) + 1) // 2).sum()
-        psd_cones = np.array(cone_dict[dp.PSD])
-        if cone_dict[dp.PSD]:
+        psd_row_e=soc_row_e
+        if cone_dict.get(dp.PSD, None) is not None:
+            psd_row_e += (np.array(cone_dict[dp.PSD]) * (np.array(cone_dict[dp.PSD]) + 1) // 2).sum()
+            psd_cones = np.array(cone_dict[dp.PSD])
             # total_psd = psd_cone_dims.sum()
             col_u = lambda d: np.repeat(np.arange(d,dtype=int), d-np.arange(d))
             row_u = lambda d: np.concatenate([np.arange(k, d,dtype=int) for k in range(d)])
@@ -136,8 +142,9 @@ def mosek_(A, b, c, cone_dict,
         # (MOSEK) [x_1,x_2,x_3] x_2*exp(x_3/x_2) ≤ x_1, x_2>0 (x_1>=x_2*R_+> 0)
         # [z,y,x] 
         # https://docs.mosek.com/latest/pythonfusion/domain.html#domain.inpexpcone"""
-        exp_row_e=psd_row_e+ 3 * cone_dict[dp.EXP]
-        if cone_dict[dp.EXP] != 0:
+        exp_row_e=psd_row_e
+        if cone_dict.get(dp.EXP, None) is not None:
+            exp_row_e += 3 * cone_dict[dp.EXP]
             # TODO 注意SCS 与 MOSEK 的顺序不同
             s_exp = M.variable(f"s_exp", 3 * cone_dict[dp.EXP], mf.Domain.unbunded())
             for i in range(cone_dict[dp.EXP]):
