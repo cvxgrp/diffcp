@@ -18,7 +18,7 @@ You will need a C++11-capable compiler to build `diffcp`.
 sudo apt update
 sudo apt install -y build-essential cmake g++ gcc
 gcc --version && g++ --version && cmake --version
-···
+```
 
 `diffcp` requires:
 * [NumPy](https://github.com/numpy/numpy) >= 2.0
