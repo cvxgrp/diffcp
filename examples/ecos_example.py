@@ -6,10 +6,10 @@ np.set_printoptions(precision=5, suppress=True)
 
 
 # We generate a random cone program with a cone
-# defined as a product of a 3-d fixed cone, 3-d positive orthant cone,
+# defined as a product of a 3-d zero cone, 3-d positive orthant cone,
 # and a 5-d second order cone.
 K = {
-    'f': 3,
+    'z': 3,
     'l': 3,
     'q': [5]
 }
@@ -23,7 +23,7 @@ A, b, c = utils.random_cone_prog(m, n, K)
 
 # We solve the cone program and get the derivative and its adjoint
 x, y, s, derivative, adjoint_derivative = diffcp.solve_and_derivative(
-    A, b, c, K, solver="ECOS", verbose=False)
+    A, b, c, K, solve_method="ECOS", verbose=False)
 
 print("x =", x)
 print("y =", y)
