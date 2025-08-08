@@ -10,6 +10,45 @@ import diffcp._diffcp as _diffcp
 import diffcp.cones as cone_lib
 
 
+def permute_psd_rows(A: sparse.csc_matrix, b: np.ndarray, n: int, row_offset: int) -> sparse.csc_matrix:
+    """
+    Permutes rows of a sparse CSC constraint matrix A to switch from lower
+    triangular order (SCS) to upper triangular order (Clarabel) for a PSD constraint.
+
+    Args:
+        A (csc_matrix): Constraint matrix in CSC format.
+        n (int): Size of the PSD constraint matrix (n x n).
+        row_offset (int): Row index where the PSD block starts.
+
+    Returns:
+        csc_matrix: New CSC matrix with permuted rows.
+    """
+
+    tril_rows, tril_cols = np.tril_indices(n)
+    triu_rows, triu_cols = np.triu_indices(n)
+
+    # Compute the permutation mapping
+    tril_multi_index = np.ravel_multi_index((tril_cols, tril_rows), (n, n))
+    triu_multi_index = np.ravel_multi_index((triu_cols, triu_rows), (n, n))
+    postshuffle_from_preshuffle_perm = np.argsort(tril_multi_index) + row_offset
+    preshuffle_from_postshuffle_perm = np.argsort(triu_multi_index) + row_offset
+    n_rows = len(postshuffle_from_preshuffle_perm)
+
+    # Apply row permutation
+    data, rows, cols = A.data, A.indices, A.indptr
+    new_rows = np.copy(rows)  # Create a new row index array
+    # Identify affected rows
+    mask = (rows >= row_offset) & (rows < (row_offset + n_rows))
+    new_rows[mask] = postshuffle_from_preshuffle_perm[rows[mask] - row_offset]
+
+    new_A = sparse.csc_matrix((data, new_rows, cols), shape=A.shape)
+
+    new_b = np.copy(b)
+
+    new_b[row_offset:row_offset+n_rows] = new_b[preshuffle_from_postshuffle_perm]
+
+    return new_A, new_b
+
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
 
@@ -443,24 +482,33 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
         P = sparse.csc_matrix((c.size, c.size))
 
         cones = []
+        # Given the difference in convention between SCS (lower triangluar columnwise)
+        # and Clarabel (upper triangular columnwise), the rows of A may need to be permuted
+        start_row = 0
         if "z" in cone_dict:
             v = cone_dict["z"]
             if v > 0:
                 cones.append(clarabel.ZeroConeT(v))
+                start_row += v
         if "f" in cone_dict:
             v = cone_dict["f"]
             if v > 0:
                 cones.append(clarabel.ZeroConeT(v))
+                start_row += v
         if "l" in cone_dict:
             v = cone_dict["l"]
             if v > 0:
                 cones.append(clarabel.NonnegativeConeT(v))
+                start_row += v
         if "q" in cone_dict:
             for v in cone_dict["q"]:
                 cones.append(clarabel.SecondOrderConeT(v))
+                start_row += v
         if "s" in cone_dict:
             for v in cone_dict["s"]:
                 cones.append(clarabel.PSDTriangleConeT(v))
+                A, b = permute_psd_rows(A, b, v, start_row)
+                start_row += v
         if "ep" in cone_dict:
             v = cone_dict["ep"]
             cones += [clarabel.ExponentialConeT()] * v
