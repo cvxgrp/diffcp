@@ -8,6 +8,7 @@ requires-python = ">= 3.10"
 readme = "README.md"
 
 dependencies = [
+    "cvxpy>=1.6.3",
     "threadpoolctl >= 1.1",
 ]
 urls = {Homepage = "https://github.com/cvxgrp/diffcp/"}
@@ -32,7 +33,10 @@ test = [
     "ecos >= 2.0.10",
     "scs >= 3.0.0",
     "mosek>=11.0.19"
+    "pytest>=8.3.5",
+
 ]
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true
+
