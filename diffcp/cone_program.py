@@ -629,7 +629,10 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
             MT = M.T
         elif mode in ("lsqr", "lsmr"):
-            M = _diffcp.M_operator(Q, cones_parsed, u, v, w)
+            # Convert to csc_matrix for compatibility with C++ bindings
+            # (scipy.sparse.bmat may return sparse array in scipy 1.14+)
+            Q_csc = sparse.csc_matrix(Q)
+            M = _diffcp.M_operator(Q_csc, cones_parsed, u, v, w)
             MT = M.transpose()
 
         pi_z = pi(z, cones)
