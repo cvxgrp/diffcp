@@ -374,8 +374,12 @@ def test_dprojection_exp():
                                                     b,
                                                     c,
                                                     cone_dims,
-                                                    solve_method="ECOS",
-                                                    mode="dense")
+                                                    solve_method="Clarabel",
+                                                    mode="dense",
+                                                    tol_gap_abs=1e-13,
+                                                    tol_gap_rel=1e-13,
+                                                    tol_feas=1e-13,
+                                                    tol_ktratio=1e-13)
 
     dlam = 1e-6
     dA = utils.get_random_like(A, lambda n: np.zeros(n))

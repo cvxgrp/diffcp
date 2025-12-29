@@ -102,7 +102,6 @@ setup(
         "scipy >= 1.1.0",
         "pybind11 >= 2.4",
         "threadpoolctl >= 1.1",
-        "ecos >= 2.0.10",
         "clarabel >= 0.5.1"
         ],
     url="http://github.com/cvxgrp/diffcp/",

@@ -458,6 +458,12 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
         if A_ecos is not None and A_ecos.nnz == 0 and np.prod(A_ecos.shape) > 0:
             raise ValueError("ECOS cannot handle sparse data with nnz == 0.")
 
+        # Convert sparse arrays to csc_matrix for ECOS compatibility (scipy >= 1.11)
+        if G_ecos is not None:
+            G_ecos = sparse.csc_matrix(G_ecos)
+        if A_ecos is not None:
+            A_ecos = sparse.csc_matrix(A_ecos)
+
         kwargs.setdefault("verbose", False)
         solution = ecos.solve(C_ecos, G_ecos, H_ecos,
                               cone_dict_ecos, A_ecos, B_ecos, **kwargs)
