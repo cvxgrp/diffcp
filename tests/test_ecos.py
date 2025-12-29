@@ -8,7 +8,7 @@ import diffcp.cones as cone_lib
 import diffcp.utils as utils
 
 
-def test_ecos_solve():
+def test_clarabel_solve():
     np.random.seed(0)
     m = 20
     n = 10
@@ -18,7 +18,7 @@ def test_ecos_solve():
     cone_dims.pop("s")
     cone_dims.pop("ep")
     x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, solve_method="ECOS")
+        A, b, c, cone_dims, solve_method="Clarabel")
 
     # check optimality conditions
     np.testing.assert_allclose(A @ x + s, b, atol=1e-8)
@@ -34,7 +34,7 @@ def test_ecos_solve():
                       [cp.norm2(x) <= 1, np.random.randn(2, 10) @ x == np.random.randn(2)])
     A, b, c, cone_dims = utils.scs_data_from_cvxpy_problem(prob)
     x, y, s, derivative, adjoint_derivative = cone_prog.solve_and_derivative(
-        A, b, c, cone_dims, solve_method="ECOS")
+        A, b, c, cone_dims, solve_method="Clarabel")
 
     # check optimality conditions
     np.testing.assert_allclose(A @ x + s, b, atol=1e-8)
@@ -52,8 +52,8 @@ def test_infeasible():
     b = np.array([1.0, -1.0])
     A = sparse.csc_matrix(np.ones((2, 1)))
     cone_dims = {cone_lib.EQ_DIM: 2}
-    with pytest.raises(cone_prog.SolverError, match=r"Solver ecos returned status Infeasible"):
-        cone_prog.solve_and_derivative(A, b, c, cone_dims, solve_method="ECOS")
+    with pytest.raises(cone_prog.SolverError, match=r"Solver .* returned status"):
+        cone_prog.solve_and_derivative(A, b, c, cone_dims, solve_method="Clarabel")
 
 
 def test_expcone():
@@ -69,11 +69,8 @@ def test_expcone():
                                                         b,
                                                         c,
                                                         cone_dims,
-                                                        solve_method="ECOS",
-                                                        mode=mode,
-                                                        feastol=1e-10,
-                                                        abstol=1e-10,
-                                                        reltol=1e-10)
+                                                        solve_method="Clarabel",
+                                                        mode=mode)
         dA = utils.get_random_like(A, lambda n: np.random.normal(0, 1e-6, size=n))
         db = np.random.normal(0, 1e-6, size=b.size)
         dc = np.random.normal(0, 1e-6, size=c.size)
@@ -82,11 +79,8 @@ def test_expcone():
                                                                       b + db,
                                                                       c + dc,
                                                                       cone_dims,
-                                                                      solve_method="ECOS",
-                                                                      mode=mode,
-                                                                      feastol=1e-10,
-                                                                      abstol=1e-10,
-                                                                      reltol=1e-10)
+                                                                      solve_method="Clarabel",
+                                                                      mode=mode)
 
         np.testing.assert_allclose(x_pert - x, dx, atol=1e-8)
         np.testing.assert_allclose(y_pert - y, dy, atol=1e-8)

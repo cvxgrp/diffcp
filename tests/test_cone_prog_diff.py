@@ -1,8 +1,8 @@
-import _diffcp
+import diffcp._diffcp as _diffcp
 import cvxpy as cp
 import numpy as np
 import pytest
-from _diffcp import Cone, ConeType
+from diffcp._diffcp import Cone, ConeType
 from scipy import sparse
 
 import diffcp.cone_program as cone_prog
