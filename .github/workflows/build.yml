@@ -37,6 +37,7 @@ jobs:
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
+          compression-level: 0
 
   build_sdist:
     name: Build source distribution
@@ -51,6 +52,7 @@ jobs:
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
+          compression-level: 0
 
   upload_pypi:
     needs: [build_wheels, build_sdist]
