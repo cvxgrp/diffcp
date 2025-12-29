@@ -518,3 +518,5 @@ MigrationBackup/
 .vscode
 .direnv/
 .envrc
+.claude/*
+.claude/
