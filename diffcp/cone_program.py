@@ -626,13 +626,13 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
         D_proj_dual_cone = _diffcp.dprojection(v, cones_parsed, True)
         if mode == "dense":
             Q_dense = Q.todense()
-            M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w)
+            M = _diffcp.M_dense(Q_dense, cones_parsed, u, v, w[0])
             MT = M.T
         elif mode in ("lsqr", "lsmr"):
             # Convert to csc_matrix for compatibility with C++ bindings
             # (scipy.sparse.bmat may return sparse array in scipy 1.14+)
             Q_csc = sparse.csc_matrix(Q)
-            M = _diffcp.M_operator(Q_csc, cones_parsed, u, v, w)
+            M = _diffcp.M_operator(Q_csc, cones_parsed, u, v, w[0])
             MT = M.transpose()
 
         pi_z = pi(z, cones)

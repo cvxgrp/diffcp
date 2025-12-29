@@ -54,8 +54,33 @@ jobs:
           path: dist/*.tar.gz
           compression-level: 0
 
+  test:
+    name: Test wheels
+    needs: [build_wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-wheels-ubuntu-*
+          path: dist
+          merge-multiple: true
+
+      - name: Install wheel and test dependencies
+        run: |
+          pip install dist/*.whl
+          pip install "diffcp[test]"
+
+      - name: Run tests
+        run: pytest tests/ -v
+
   upload_pypi:
-    needs: [build_wheels, build_sdist]
+    needs: [build_wheels, build_sdist, test]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
