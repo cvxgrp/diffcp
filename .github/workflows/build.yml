@@ -32,8 +32,7 @@ jobs:
           pip install -v .[test]
 
       - name: Run tests
-        run: pytest $GITHUB_WORKSPACE/tests/ -v
-        working-directory: /tmp
+        run: pytest tests/ -v
 
   build_wheels:
     name: Build wheels on ${{ matrix.os }}

@@ -37,4 +37,5 @@ test = [
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true
+wheel.packages = ["src/diffcp"]
 
