@@ -50,6 +50,38 @@ def permute_psd_rows(A: sparse.csc_matrix, b: np.ndarray, n: int, row_offset: in
 
     return new_A, new_b
 
+
+def inverse_permute_psd_solution(y: np.ndarray, s: np.ndarray, n: int, row_offset: int):
+    """
+    Inverse permutes y and s vectors from Clarabel (upper triangular)
+    back to SCS (lower triangular) convention for a PSD cone.
+
+    Args:
+        y (ndarray): Dual variable vector (Clarabel convention).
+        s (ndarray): Slack variable vector (Clarabel convention).
+        n (int): Size of the PSD constraint matrix (n x n).
+        row_offset (int): Row index where the PSD block starts.
+
+    Returns:
+        tuple: (new_y, new_s) permuted back to SCS convention.
+    """
+    triu_rows, triu_cols = np.triu_indices(n)
+
+    # Compute the inverse permutation (Clarabel → SCS)
+    triu_multi_index = np.ravel_multi_index((triu_cols, triu_rows), (n, n))
+    preshuffle_from_postshuffle_perm = np.argsort(triu_multi_index)
+    n_rows = len(preshuffle_from_postshuffle_perm)
+
+    new_y = np.copy(y)
+    new_s = np.copy(s)
+
+    # Apply inverse permutation to the PSD block
+    new_y[row_offset:row_offset+n_rows] = y[row_offset + preshuffle_from_postshuffle_perm]
+    new_s[row_offset:row_offset+n_rows] = s[row_offset + preshuffle_from_postshuffle_perm]
+
+    return new_y, new_s
+
+
 def pi(z, cones):
     """Projection onto R^n x K^* x R_+
 
@@ -539,7 +571,7 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
             for v in cone_dict["s"]:
                 cones.append(clarabel.PSDTriangleConeT(v))
                 A, b = permute_psd_rows(A, b, v, start_row)
-                start_row += v
+                start_row += v * (v + 1) // 2  # triangular number for vectorized PSD cone
         if "ep" in cone_dict:
             v = cone_dict["ep"]
             cones += [clarabel.ExponentialConeT()] * v
@@ -557,6 +589,22 @@ def solve_internal(A, b, c, cone_dict, solve_method=None,
         result["x"] = np.array(solution.x)
         result["y"] = np.array(solution.z)
         result["s"] = np.array(solution.s)
+
+        # Permute y and s back from Clarabel (upper triangular) to SCS (lower triangular) convention
+        if "s" in cone_dict:
+            start_row = 0
+            if "z" in cone_dict and cone_dict["z"] > 0:
+                start_row += cone_dict["z"]
+            if "f" in cone_dict and cone_dict["f"] > 0:
+                start_row += cone_dict["f"]
+            if "l" in cone_dict and cone_dict["l"] > 0:
+                start_row += cone_dict["l"]
+            if "q" in cone_dict:
+                start_row += sum(cone_dict["q"])
+            for v in cone_dict["s"]:
+                result["y"], result["s"] = inverse_permute_psd_solution(
+                    result["y"], result["s"], v, start_row)
+                start_row += v * (v + 1) // 2  # triangular number
 
         CLARABEL2SCS_STATUS_MAP = {
             "Solved": "Solved",
