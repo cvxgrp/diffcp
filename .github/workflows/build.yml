@@ -51,6 +51,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.22.0
         env:
           CIBW_SKIP: "pp* *-win32 *_i686"
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
 
       - uses: actions/upload-artifact@v4
         with:

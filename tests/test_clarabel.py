@@ -138,3 +138,86 @@ def test_psdcone():
 
     assert np.abs(np.trace(sol) - 1.0) < 1e-6
     assert (np.linalg.eigvals(sol) >= -1e-6).all()
+
+
+def test_solve_only_batch():
+    """Test solve_only_batch with Ps=None (default)."""
+    np.random.seed(0)
+    m = 20
+    n = 10
+    batch_size = 5
+
+    As, bs, cs, cone_dicts = [], [], [], []
+    for _ in range(batch_size):
+        A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
+        As.append(A)
+        bs.append(b)
+        cs.append(c)
+        cone_dicts.append(cone_dims)
+
+    # Test serial path (n_jobs_forward=1) with Ps=None
+    xs, ys, ss = cone_prog.solve_only_batch(
+        As, bs, cs, cone_dicts, n_jobs_forward=1, solve_method='Clarabel')
+    assert len(xs) == batch_size
+    assert len(ys) == batch_size
+    assert len(ss) == batch_size
+
+    # Verify solutions satisfy optimality conditions
+    for i in range(batch_size):
+        np.testing.assert_allclose(As[i] @ xs[i] + ss[i], bs[i], atol=1e-7)
+
+    # Test parallel path (n_jobs_forward=-1) with Ps=None
+    xs_par, ys_par, ss_par = cone_prog.solve_only_batch(
+        As, bs, cs, cone_dicts, n_jobs_forward=-1, solve_method='Clarabel')
+    assert len(xs_par) == batch_size
+
+    # Verify parallel solutions also satisfy optimality conditions
+    for i in range(batch_size):
+        np.testing.assert_allclose(As[i] @ xs_par[i] + ss_par[i], bs[i], atol=1e-7)
+
+
+def test_derivative_batch_parallel():
+    """Test that parallel D_batch works correctly."""
+    np.random.seed(0)
+    m = 20
+    n = 10
+    batch_size = 5
+
+    As, bs, cs, cone_dicts = [], [], [], []
+    for _ in range(batch_size):
+        A, b, c, cone_dims = utils.least_squares_eq_scs_data(m, n)
+        As.append(A)
+        bs.append(b)
+        cs.append(c)
+        cone_dicts.append(cone_dims)
+
+    # Solve with serial backward pass
+    xs_ser, ys_ser, ss_ser, D_ser, DT_ser = cone_prog.solve_and_derivative_batch(
+        As, bs, cs, cone_dicts, n_jobs_forward=1, n_jobs_backward=1, solve_method='Clarabel')
+
+    # Solve with parallel backward pass
+    xs_par, ys_par, ss_par, D_par, DT_par = cone_prog.solve_and_derivative_batch(
+        As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs_backward=-1, solve_method='Clarabel')
+
+    # Create perturbations
+    dAs = [utils.get_random_like(A, lambda n: np.random.normal(0, 1e-6, size=n)) for A in As]
+    dbs = [np.random.normal(0, 1e-6, size=b.size) for b in bs]
+    dcs = [np.random.normal(0, 1e-6, size=c.size) for c in cs]
+
+    # Test D_batch (forward derivative)
+    dxs_ser, dys_ser, dss_ser = D_ser(dAs, dbs, dcs)
+    dxs_par, dys_par, dss_par = D_par(dAs, dbs, dcs)
+
+    for i in range(batch_size):
+        np.testing.assert_allclose(dxs_ser[i], dxs_par[i], rtol=1e-5, atol=1e-10)
+        np.testing.assert_allclose(dys_ser[i], dys_par[i], rtol=1e-5, atol=1e-10)
+        np.testing.assert_allclose(dss_ser[i], dss_par[i], rtol=1e-5, atol=1e-10)
+
+    # Test DT_batch (adjoint derivative)
+    dAs_ser, dbs_ser, dcs_ser = DT_ser(xs_ser, ys_ser, ss_ser)
+    dAs_par, dbs_par, dcs_par = DT_par(xs_par, ys_par, ss_par)
+
+    for i in range(batch_size):
+        np.testing.assert_allclose(dAs_ser[i].todense(), dAs_par[i].todense(), rtol=1e-5, atol=1e-10)
+        np.testing.assert_allclose(dbs_ser[i], dbs_par[i], rtol=1e-5, atol=1e-10)
+        np.testing.assert_allclose(dcs_ser[i], dcs_par[i], rtol=1e-5, atol=1e-10)

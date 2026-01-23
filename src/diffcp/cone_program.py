@@ -197,11 +197,11 @@ def solve_and_derivative_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1, n_jobs
                 return dAs, dbs, dcs
     else:
 
-        def D_batch(dAs, dbs, dcs, dPs=None, **kwargs):
+        def D_batch(dAs, dbs, dcs, **kwargs):
             pool = ThreadPool(processes=n_jobs_backward)
 
             def Di(i):
-                return Ds[i](dAs[i], dbs[i], dcs[i], dPs[i], **kwargs)
+                return Ds[i](dAs[i], dbs[i], dcs[i], **kwargs)
             results = pool.map(Di, range(batch_size))
             pool.close()
             dxs = [r[0] for r in results]
@@ -256,6 +256,8 @@ def solve_only_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1,
     batch_size = len(As)
     if warm_starts is None:
         warm_starts = [None] * batch_size
+    if Ps is None:
+        Ps = [None] * batch_size
     if n_jobs_forward == -1:
         n_jobs_forward = mp.cpu_count()
     n_jobs_forward = min(batch_size, n_jobs_forward)
@@ -265,7 +267,7 @@ def solve_only_batch(As, bs, cs, cone_dicts, n_jobs_forward=-1,
         xs, ys, ss = [], [], []
         for i in range(batch_size):
             x, y, s = solve_only(As[i], bs[i], cs[i], cone_dicts[i],
-                                 warm_starts[i], Ps[i], **kwargs)
+                                 warm_start=warm_starts[i], P=Ps[i], **kwargs)
             xs += [x]
             ys += [y]
             ss += [s]
