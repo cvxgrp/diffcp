@@ -89,6 +89,15 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Verify wheel integrity
+        run: |
+          pip install twine
+          for whl in dist/*.whl; do
+            echo "Checking $whl..."
+            unzip -t "$whl" || { echo "CORRUPT: $whl"; exit 1; }
+          done
+          twine check dist/*
+
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           verbose: true
