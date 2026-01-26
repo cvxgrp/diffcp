@@ -16,14 +16,8 @@ license = {text = "Apache License, Version 2.0"}
 
 [build-system]
 requires = [
-    "numpy>=2.0",
-    "scipy>=1.1.0",
-    "pybind11>=2.4",
-    "setuptools >= 68.1.0",
-    "pytest",
-    "wheel",
     "scikit-build-core",
-    "pybind11",
+    "pybind11>=2.4",
 ]
 build-backend = "scikit_build_core.build"
 
