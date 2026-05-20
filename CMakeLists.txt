@@ -20,8 +20,10 @@ python_add_library(_diffcp MODULE cpp/src/wrapper.cpp cpp/src/deriv.cpp cpp/src/
 target_link_libraries(_diffcp PRIVATE pybind11::headers)
 target_include_directories(_diffcp PRIVATE cpp/external/eigen/)
 target_include_directories(_diffcp PRIVATE cpp/include/)
-
-
+set_target_properties(_diffcp PROPERTIES
+  CXX_STANDARD 11
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF)
 
 # This is passing in the version as a define just as an example
 target_compile_definitions(_diffcp PRIVATE VERSION_INFO=${PROJECT_VERSION})
