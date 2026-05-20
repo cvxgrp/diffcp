@@ -6,7 +6,7 @@ on:
         branches:
             - master
         tags:
-          - '*'
+          - 'v*'
 
 # https://docs.github.com/en/actions/using-jobs/using-concurrency#example-using-a-fallback-value
 # Only cancels-in-progress on PRs (head_ref only defined in PR, fallback run_id always unique)
@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # setuptools-scm needs tags to compute the version
 
       - uses: actions/setup-python@v5
         with:
@@ -45,6 +47,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # setuptools-scm needs tags to compute the version
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.22.0
@@ -64,6 +68,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # setuptools-scm needs tags to compute the version
 
       - name: Build sdist
         run: pipx run build --sdist
@@ -80,7 +86,7 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -101,4 +107,3 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           verbose: true
-          password: ${{ secrets.PYPI_API_TOKEN }}

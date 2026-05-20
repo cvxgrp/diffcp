@@ -1,14 +1,16 @@
 
 [project]
 name = "diffcp"
-version = "1.1.8"
+dynamic = ["version"]
 description = "A library to compute gradients for convex optimization problems"
 requires-python = ">= 3.10"
 
 readme = "README.md"
 
 dependencies = [
-    "cvxpy>=1.6.3",
+    "numpy >= 2.0",
+    "scipy >= 1.10",
+    "scs >= 3.0.0",
     "threadpoolctl >= 1.1",
 ]
 urls = {Homepage = "https://github.com/cvxgrp/diffcp/"}
@@ -17,13 +19,24 @@ license = {text = "Apache License, Version 2.0"}
 [build-system]
 requires = [
     "scikit-build-core",
+    "setuptools-scm >= 8",
     "pybind11>=2.4",
 ]
 build-backend = "scikit_build_core.build"
 
 [project.optional-dependencies]
+cvxpy = [
+    "cvxpy >= 1.6.3",
+]
+clarabel = [
+    "clarabel >= 0.5.1",
+]
+ecos = [
+    "ecos >= 2.0.10",
+]
 test = [
     "clarabel >= 0.5.1",
+    "cvxpy >= 1.6.3",
     "scs >= 3.0.0",
     "pytest>=8.3.5",
     "ecos >= 2.0.10",
@@ -33,3 +46,16 @@ test = [
 wheel.expand-macos-universal-tags = true
 wheel.packages = ["src/diffcp"]
 
+[tool.scikit-build.sdist]
+include = ["src/diffcp/_version.py"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.setuptools_scm"
+
+[tool.setuptools_scm]
+version_file = "src/diffcp/_version.py"
+version_scheme = "semver-pep440-release-branch"
+fallback_version = "0.0.0"
+
+[tool.setuptools_scm.scm.git]
+describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "v*"]
