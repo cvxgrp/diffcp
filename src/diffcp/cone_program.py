@@ -702,6 +702,9 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dc: NumPy array representing perturbation in `c`
             dP: (optional) SciPy sparse matrix in CSC format; must have 
                 same sparsity pattern as `P` from the cone program
+            kwargs: Keyword arguments passed to the differentiation solver.
+                LSQR accepts atol, btol, conlim, damp, and iter_lim; LSMR
+                accepts scipy.sparse.linalg.lsmr options, including maxiter.
         Returns:
            NumPy arrays dx, dy, ds, the result of applying the derivative
            to the perturbations.
@@ -724,10 +727,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             elif mode == "dense":
                 dz = _diffcp._solve_derivative_dense(M, MT, rhs)
             elif mode == "lsqr":
-                dz = _diffcp.lsqr(M, rhs).solution
+                dz = _diffcp.lsqr(M, rhs, **kwargs).solution
             elif mode == "lsmr":
                 M_sp = sparse.linalg.LinearOperator(dQ.shape, matvec=M.matvec, rmatvec=M.rmatvec)
-                dz, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(M_sp, rhs, maxiter=10*M_sp.shape[0], atol=1e-12, btol=1e-12)
+                options = dict(maxiter=10*M_sp.shape[0], atol=1e-12, btol=1e-12)
+                options.update(kwargs)
+                dz, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(M_sp, rhs, **options)
 
             du, dv, dw = np.split(dz, [n, n + m])
             dx = du - x * dw
@@ -742,6 +747,8 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             dy: NumPy array representing perturbation in `y`
             ds: NumPy array representing perturbation in `s`
             return_dP: flag to return dP, True is only supported for lpgd mode.
+            kwargs: Keyword arguments passed to the differentiation solver,
+                as in derivative.
         Returns:
             (`dA`, `db`, `dc`), the result of applying the adjoint to the
             perturbations; the sparsity pattern of `dA` matches that of `A`.
@@ -762,10 +769,12 @@ def solve_and_derivative_internal(A, b, c, cone_dict, solve_method=None,
             elif mode == "dense":
                 r = _diffcp._solve_adjoint_derivative_dense(M, MT, dz)
             elif mode == "lsqr":
-                r = _diffcp.lsqr(MT, dz).solution
+                r = _diffcp.lsqr(MT, dz, **kwargs).solution
             elif mode == "lsmr":
                 MT_sp = sparse.linalg.LinearOperator(dz.shape*2, matvec=MT.matvec, rmatvec=MT.rmatvec)
-                r, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(MT_sp, dz, maxiter=10*MT_sp.shape[0], atol=1e-10, btol=1e-10)
+                options = dict(maxiter=10*MT_sp.shape[0], atol=1e-10, btol=1e-10)
+                options.update(kwargs)
+                r, istop, itn, normr, normar, norma, conda, normx = sparse.linalg.lsmr(MT_sp, dz, **options)
 
             values = pi_z[cols] * r[rows + n] - pi_z[n + rows] * r[cols]
             dA = sparse.csc_matrix((values, (rows, cols)), shape=A.shape)

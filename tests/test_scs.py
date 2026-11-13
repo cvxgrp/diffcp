@@ -1,8 +1,71 @@
 import cvxpy as cp
 import numpy as np
+import pytest
+from scipy import sparse
+from diffcp import ZERO
 
 import diffcp.cone_program as cone_prog
 import diffcp.utils as utils
+
+
+@pytest.mark.parametrize("mode", ["lsqr", "lsmr"])
+@pytest.mark.parametrize("adjoint", [False, True])
+@pytest.mark.parametrize("limit", ["tolerance", "iterations"])
+def test_derivative_solver_controls(mode, adjoint, limit):
+    rng = np.random.default_rng(0)
+    n = 32
+    left, _ = np.linalg.qr(rng.normal(size=(n, n)))
+    right, _ = np.linalg.qr(rng.normal(size=(n, n)))
+    matrix = left @ np.diag(np.geomspace(1, 1e-4, n)) @ right.T
+    A = sparse.csc_matrix(matrix)
+    zero = np.zeros(n)
+    _, _, _, D, DT = cone_prog.solve_and_derivative(
+        A, zero, zero, {ZERO: n}, mode=mode, eps=1e-12)
+    # The equality constraints uniquely determine x, with derivative solve(A, db).
+    direction = rng.normal(size=n)
+    if adjoint:
+        reference = np.linalg.solve(matrix.T, direction)
+
+        def apply(**options):
+            return DT(direction, zero, zero, **options)[1]
+    else:
+        reference = np.linalg.solve(matrix, direction)
+
+        def apply(**options):
+            return D(sparse.csc_matrix(A.shape), direction, zero, **options)[0]
+
+    iteration_key = "iter_lim" if mode == "lsqr" else "maxiter"
+    accurate = apply(atol=1e-14, btol=1e-14, conlim=0, **{iteration_key: 1000})
+    np.testing.assert_allclose(accurate, reference, atol=1e-7, rtol=1e-8)
+    if limit == "tolerance":
+        limited = apply(atol=1e-2, btol=1e-2)
+    else:
+        limited = apply(**{iteration_key: 1})
+    assert np.linalg.norm(limited - reference) > 0.1 * np.linalg.norm(reference)
+
+
+@pytest.mark.parametrize("mode", ["lsqr", "lsmr"])
+@pytest.mark.parametrize("n_jobs", [1, 2])
+def test_derivative_solver_controls_batch(mode, n_jobs):
+    matrix = np.diag([1., 0.1, 0.01])
+    A = sparse.csc_matrix(matrix)
+    zero = np.zeros(3)
+    direction = np.ones(3)
+    _, _, _, D, DT = cone_prog.solve_and_derivative_batch(
+        [A, A], [zero, zero], [zero, zero], [{ZERO: 3}] * 2,
+        n_jobs_forward=n_jobs, n_jobs_backward=n_jobs, mode=mode, eps=1e-12)
+    dAs = [sparse.csc_matrix(A.shape)] * 2
+    reference = np.linalg.solve(matrix, direction)
+    options = dict(atol=1e-14, btol=1e-14)
+    dxs, _, _ = D(dAs, [direction] * 2, [zero] * 2, **options)
+    _, dbs, _ = DT([direction] * 2, [zero] * 2, [zero] * 2, **options)
+    iteration_key = "iter_lim" if mode == "lsqr" else "maxiter"
+    limited_dxs, _, _ = D(dAs, [direction] * 2, [zero] * 2, **{iteration_key: 1})
+    _, limited_dbs, _ = DT([direction] * 2, [zero] * 2, [zero] * 2, **{iteration_key: 1})
+    for actual, limited in zip(dxs + dbs, limited_dxs + limited_dbs):
+        np.testing.assert_allclose(actual, reference, atol=1e-8, rtol=1e-8)
+        assert np.linalg.norm(limited - reference) > 0.1 * np.linalg.norm(reference)
+
 
 
 def test_solve_and_derivative():

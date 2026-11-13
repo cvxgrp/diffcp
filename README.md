@@ -114,6 +114,13 @@ The function `solve_and_derivative` returns a tuple
 * `adjoint_derivative` is a function that applies the adjoint of the derivative to perturbations `dx`, `dy`, `ds`. It has the signature 
 ```adjoint_derivative(dx, dy, ds, return_dP=False) -> dA, db, dc, (dP)```, where `dx`, `dy`, and `ds` are NumPy arrays. `dP` is only returned when setting `return_dP=True` (Note: currently only supported for LPGD differentiation mode).
 
+In `lsqr` and `lsmr` modes, both functions also accept keyword arguments for the
+linear solver, such as `atol` and `btol`. For example,
+`derivative(dA, db, dc, atol=1e-12, btol=1e-12)` sets the derivative solve's
+tolerances independently of the cone-program solver's tolerances. The iteration
+limit is called `iter_lim` in `lsqr` mode and `maxiter` in `lsmr` mode. Omitting
+these arguments keeps the existing defaults.
+
 #### Example
 ```python
 import numpy as np
